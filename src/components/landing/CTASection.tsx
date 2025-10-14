@@ -24,7 +24,7 @@ export function CTASection() {
             <a href="/" className="bg-gradient-to-r from-customgpt-primary to-customgpt-secondary text-white px-10 py-4 rounded-xl font-bold text-lg hover:shadow-xl hover:shadow-customgpt-primary/25 hover:-translate-y-1 transition-all duration-300 flex items-center gap-2 justify-center">
               <RocketIcon size={20} /> Try Live Demo
             </a>
-            <a href="https://github.com/Poll-The-People/customgpt-ui-starter-kit?utm_source=starterkit.customgpt.ai" target="_blank" rel="noopener noreferrer" className="bg-white border-2 border-customgpt-primary text-customgpt-primary px-10 py-4 rounded-xl font-bold text-lg hover:bg-customgpt-primary hover:text-white hover:-translate-y-1 transition-all duration-300 flex items-center gap-2 justify-center">
+            <a href="https://github.com/Poll-The-People/customgpt-starter-kit?utm_source=starterkit.customgpt.ai" target="_blank" rel="noopener noreferrer" className="bg-white border-2 border-customgpt-primary text-customgpt-primary px-10 py-4 rounded-xl font-bold text-lg hover:bg-customgpt-primary hover:text-white hover:-translate-y-1 transition-all duration-300 flex items-center gap-2 justify-center">
               <GitHubIcon size={20} /> Clone Repository
             </a>
             <a href="https://docs.customgpt.ai?utm_source=starterkit.customgpt.ai" target="_blank" rel="noopener noreferrer" className="bg-white border-2 border-customgpt-secondary text-customgpt-secondary px-10 py-4 rounded-xl font-bold text-lg hover:bg-customgpt-secondary hover:text-white hover:-translate-y-1 transition-all duration-300 flex items-center gap-2 justify-center">
