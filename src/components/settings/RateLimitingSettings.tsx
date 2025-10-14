@@ -41,6 +41,7 @@ export function RateLimitingSettings({}: RateLimitingSettingsProps) {
 
   useEffect(() => {
     fetchConfig()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchConfig = async () => {

@@ -508,7 +508,7 @@ export function AgentRateLimits() {
               <li>• Users are identified by JWT token, session, or IP address</li>
               <li>• Counters reset automatically at the end of each time window</li>
               <li>• Leave a field empty to have no limit for that time window</li>
-              <li>• Click "Save" after making changes to persist the configuration</li>
+              <li>• Click &quot;Save&quot; after making changes to persist the configuration</li>
             </ul>
           </div>
         </div>
