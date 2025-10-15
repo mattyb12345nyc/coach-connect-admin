@@ -299,18 +299,25 @@ const MessageActions: React.FC<MessageActionsProps> = ({ message, onFeedback, is
  * @param onFeedback - Handler for user feedback
  * @param className - Additional CSS classes
  */
-export const Message: React.FC<MessageProps> = ({ 
+export const Message: React.FC<MessageProps> = ({
   message,
   agent,
-  isStreaming = false, 
+  isStreaming = false,
   isLast = false,
   onCitationClick,
   onPreviewClick,
   onFeedback,
   mode = 'standalone',
-  className 
+  enableCitations,
+  className
 }) => {
   const isUser = message.role === 'user';
+
+  // Determine if citations should be shown
+  // Priority: enableCitations prop > mode-based logic
+  const shouldShowCitations = enableCitations !== undefined
+    ? enableCitations
+    : mode === 'standalone';
   
   // Get messages from the conversation to check if this is the last assistant message
   const messages = useMessageStore(state => {
@@ -376,9 +383,9 @@ export const Message: React.FC<MessageProps> = ({
             />
           )}
           
-          {/* Citations - Only shown in standalone mode */}
-          {mode === 'standalone' && message.citations && message.citations.length > 0 && (
-            <CitationList 
+          {/* Citations - Shown based on enableCitations prop or mode */}
+          {shouldShowCitations && message.citations && message.citations.length > 0 && (
+            <CitationList
               citations={message.citations}
               onCitationClick={onCitationClick}
               onPreviewClick={onPreviewClick}

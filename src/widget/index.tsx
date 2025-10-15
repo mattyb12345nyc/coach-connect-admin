@@ -587,10 +587,12 @@ class CustomGPTWidget {
                 widgetInstance={this.config.isolateConversations !== false ? widgetRef : undefined}
                 // Pass current conversations for isolated mode
                 conversations={this.config.isolateConversations !== false ? this.getConversations() : undefined}
-                currentConversation={this.config.isolateConversations !== false && this.currentConversationId ? 
+                currentConversation={this.config.isolateConversations !== false && this.currentConversationId ?
                   this.getConversations().find(c => c.id === this.currentConversationId) : undefined}
                 // Pass refresh key to trigger ConversationManager updates
                 conversationRefreshKey={this.conversationRefreshKey}
+                // Pass citation configuration
+                enableCitations={this.config.enableCitations}
               />
               <WidgetToaster sessionId={this.sessionId} />
             </div>

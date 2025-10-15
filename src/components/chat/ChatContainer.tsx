@@ -242,6 +242,8 @@ interface MessageAreaProps {
   mode?: 'standalone' | 'widget' | 'floating';
   /** Function to show free trial limit modal */
   onShowFreeTrialLimitModal?: () => void;
+  /** Whether to show citations */
+  enableCitations?: boolean;
 }
 
 /**
@@ -256,7 +258,7 @@ interface MessageAreaProps {
  * - Welcome message when empty
  * - Loading states with typing indicator
  */
-const MessageArea: React.FC<MessageAreaProps> = ({ className, mode = 'standalone', onShowFreeTrialLimitModal }) => {
+const MessageArea: React.FC<MessageAreaProps> = ({ className, mode = 'standalone', onShowFreeTrialLimitModal, enableCitations }) => {
   const { 
     messages, 
     streamingMessage, 
@@ -489,6 +491,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ className, mode = 'standalone
               onPreviewClick={handlePreviewClick}
               onFeedback={(feedback) => handleMessageFeedback(message.id, feedback)}
               mode={mode}
+              enableCitations={enableCitations}
             />
           ))}
         </div>
@@ -504,6 +507,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ className, mode = 'standalone
           onCitationClick={handleCitationClick}
           onPreviewClick={handlePreviewClick}
           mode={mode}
+          enableCitations={enableCitations}
         />
       )}
       
@@ -680,6 +684,8 @@ interface ChatContainerProps {
   conversationRefreshKey?: number;
   /** Mobile optimization mode */
   isMobile?: boolean;
+  /** Whether to show citations */
+  enableCitations?: boolean;
 }
 
 /**
@@ -710,7 +716,7 @@ interface ChatContainerProps {
  *   onClose={() => setShowChat(false)}
  * />
  */
-export const ChatContainer: React.FC<ChatContainerProps> = ({ 
+export const ChatContainer: React.FC<ChatContainerProps> = ({
   mode = 'standalone',
   className,
   onClose,
@@ -722,7 +728,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   onConversationChange,
   onMessage,
   conversationRefreshKey,
-  isMobile = false
+  isMobile = false,
+  enableCitations
 }) => {
   const { sendMessage, isStreaming, cancelStreaming } = useMessageStore();
   const { fetchAgents, agents, currentAgent } = useAgentStore();
@@ -939,10 +946,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         onCreateConversation={handleCreateConversation}
         conversationRefreshKey={conversationRefreshKey}
       />
-      <MessageArea 
-        className="flex-1 overflow-y-auto" 
-        mode={mode} 
+      <MessageArea
+        className="flex-1 overflow-y-auto"
+        mode={mode}
         onShowFreeTrialLimitModal={() => setShowFreeTrialLimitModal(true)}
+        enableCitations={enableCitations}
       />
       <div className={cn(
         "mt-auto",

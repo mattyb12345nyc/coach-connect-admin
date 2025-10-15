@@ -75,6 +75,7 @@ interface ChatLayoutProps {
   conversations?: any[]; // Current conversations for isolated mode
   currentConversation?: any; // Current conversation for isolated mode
   conversationRefreshKey?: number; // Key to trigger ConversationManager refresh
+  enableCitations?: boolean; // Whether to show citations
 }
 
 /**
@@ -99,7 +100,8 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({
   widgetInstance,
   conversations,
   currentConversation,
-  conversationRefreshKey
+  conversationRefreshKey,
+  enableCitations
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -164,6 +166,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({
         onMessage={onMessage}
         conversationRefreshKey={conversationRefreshKey}
         isMobile={isMobile}
+        enableCitations={enableCitations}
       />
     );
   }
@@ -185,6 +188,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({
           onMessage={onMessage}
           conversationRefreshKey={conversationRefreshKey}
           isMobile={true}
+          enableCitations={enableCitations}
         />
       </div>
     );
@@ -215,6 +219,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({
           onMessage={onMessage}
           conversationRefreshKey={conversationRefreshKey}
           isMobile={false}
+          enableCitations={enableCitations}
         />
       </div>
     </div>

@@ -832,25 +832,28 @@ export interface BaseComponentProps {
 export interface MessageProps extends BaseComponentProps {
   /** The message data to display */
   message: ChatMessage;
-  
+
   /** The current agent/project for displaying avatars */
   agent?: Agent | null;
-  
+
   /** Whether this message is currently being streamed */
   isStreaming?: boolean;
-  
+
   /** Whether this is the last message in the conversation */
   isLast?: boolean;
-  
+
   /** Handler for when a citation is clicked */
   onCitationClick?: (citation: Citation) => void;
-  
+
   /** Deployment mode - affects citation visibility */
   mode?: 'standalone' | 'widget' | 'floating';
-  
+
+  /** Whether to show citations (overrides mode-based logic) */
+  enableCitations?: boolean;
+
   /** Handler for when a citation preview is requested */
   onPreviewClick?: (citation: Citation) => void;
-  
+
   /** Handler for when feedback is given */
   onFeedback?: (feedback: FeedbackType) => void;
 }
