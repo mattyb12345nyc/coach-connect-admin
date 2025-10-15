@@ -158,6 +158,13 @@ class CustomGPTWidget {
       ...config,
     };
 
+    // Debug logging for widget configuration
+    console.log('[Widget] Configuration:', {
+      mode: this.config.mode,
+      enableCitations: this.config.enableCitations,
+      agentId: this.config.agentId
+    });
+
     // Initialize session ID
     // For widget mode, use a persistent session ID based on agentId to maintain conversations across refreshes
     if ((this.config.mode === 'widget' || this.config.mode === 'floating') && this.config.isolateConversations !== false) {

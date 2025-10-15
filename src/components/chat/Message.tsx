@@ -318,6 +318,21 @@ export const Message: React.FC<MessageProps> = ({
   const shouldShowCitations = enableCitations !== undefined
     ? enableCitations
     : mode === 'standalone';
+
+  // Debug logging for citations
+  React.useEffect(() => {
+    if (!isUser && message.citations) {
+      console.log('[Message] Citation debug:', {
+        messageId: message.id,
+        mode,
+        enableCitations,
+        shouldShowCitations,
+        hasCitations: !!message.citations,
+        citationCount: message.citations?.length || 0,
+        citations: message.citations
+      });
+    }
+  }, [message.citations, mode, enableCitations, shouldShowCitations, isUser, message.id]);
   
   // Get messages from the conversation to check if this is the last assistant message
   const messages = useMessageStore(state => {

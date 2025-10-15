@@ -320,17 +320,18 @@ app.get('/api/proxy/projects/:projectId', async (req, res) => {
   }
 });
 
-// Handle all other CustomGPT API requests (fallback for any missed endpoints)
-app.all('/api/proxy/*', async (req, res) => {
+// Fallback route - handle any unmatched /api/proxy/* requests
+// Note: This must be the last route to act as a catch-all
+app.use('/api/proxy', async (req, res) => {
   const apiKey = process.env.CUSTOMGPT_API_KEY;
-  
+
   if (!apiKey) {
-    return res.status(500).json({ 
-      error: 'CUSTOMGPT_API_KEY not found in environment variables' 
+    return res.status(500).json({
+      error: 'CUSTOMGPT_API_KEY not found in environment variables'
     });
   }
 
-  // Extract the path after /api/proxy/
+  // Extract the path after /api/proxy
   const apiPath = req.originalUrl.replace('/api/proxy', '');
   const customgptUrl = `${process.env.CUSTOMGPT_API_BASE_URL || 'https://app.customgpt.ai/api/v1'}${apiPath}`;
 
@@ -367,7 +368,7 @@ app.all('/api/proxy/*', async (req, res) => {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          
+
           const chunk = decoder.decode(value);
           res.write(chunk);
         }
@@ -384,9 +385,9 @@ app.all('/api/proxy/*', async (req, res) => {
 
   } catch (error) {
     console.error('[FALLBACK PROXY ERROR]', error);
-    res.status(500).json({ 
-      error: 'Proxy request failed', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Proxy request failed',
+      details: error.message
     });
   }
 });
@@ -401,8 +402,8 @@ app.use((err, req, res, next) => {
 });
 
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ 
+app.use((req, res) => {
+  res.status(404).json({
     error: 'Endpoint not found',
     path: req.originalUrl
   });
