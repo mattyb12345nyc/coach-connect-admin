@@ -22,11 +22,13 @@ module.exports = (env, argv) => {
       chunkFilename: isProduction ? '[name].[contenthash].chunk.js' : '[name].chunk.js',
       publicPath: '/',
       clean: true,
-      library: 'CustomGPTWidget',
-      libraryTarget: 'umd',
-      libraryExport: 'default', // Export the default export
-      globalObject: 'typeof self !== \'undefined\' ? self : this',
-      umdNamedDefine: true,
+      library: {
+        name: 'CustomGPTWidget',
+        type: 'umd',
+        export: 'default',
+        umdNamedDefine: true,
+      },
+      globalObject: 'this', // Critical for UMD + externals
     },
 
     resolve: {
@@ -46,7 +48,10 @@ module.exports = (env, argv) => {
             loader: 'babel-loader',
             options: {
               presets: [
-                ['@babel/preset-env', { targets: 'defaults' }],
+                ['@babel/preset-env', {
+                  targets: 'defaults',
+                  modules: false  // Let webpack handle modules, prevents interop helpers
+                }],
                 ['@babel/preset-react', { runtime: 'automatic' }],
                 '@babel/preset-typescript',
               ],
@@ -181,9 +186,24 @@ module.exports = (env, argv) => {
 
     externals: {
       // Don't bundle React if it's already available on the host page
+      // For UMD builds: lowercase for commonjs, PascalCase for root (browser global)
+      // NOTE: We externalize react and react-dom, but NOT react-dom/client
+      // because it's a submodule that doesn't exist as a separate global
       ...(env && env.externals ? {
-        'react': 'React',
-        'react-dom': 'ReactDOM',
+        'react': {
+          root: 'React',
+          commonjs2: 'react',
+          commonjs: 'react',
+          amd: 'react'
+        },
+        'react-dom': {
+          root: 'ReactDOM',
+          commonjs2: 'react-dom',
+          commonjs: 'react-dom',
+          amd: 'react-dom'
+        },
+        // Don't externalize react-dom/client - let webpack bundle it
+        // It will use the externalized react-dom internally
       } : {}),
     },
 

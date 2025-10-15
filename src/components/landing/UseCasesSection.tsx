@@ -1,6 +1,6 @@
 'use client'
 
-import { 
+import {
   RocketOutlineIcon,
   BuildingIcon,
   PaletteIcon,
@@ -29,12 +29,12 @@ const useCases = [
     title: 'Internal Tools',
     subtitle: 'Deploy RAG for your team',
     features: [
-      'SSO integration ready',
       'On-premise deployment',
-      'Access control & permissions',
-      'Team collaboration features',
-      'Audit logs & compliance',
-      'Custom knowledge bases'
+      'Rate Limiting & quotas',
+      'Rate Limit IP and Conversation Query',
+      'Admin panel for real-time config & monitoring',
+      'Cloudflare Turnstile bot protection'
+
     ],
     gradient: 'from-customgpt-secondary to-customgpt-dark-blue'
   },
@@ -109,13 +109,13 @@ export function UseCasesSection() {
             From startups to enterprises, developers across industries are building with CustomGPT.ai Starter Kit
           </p>
         </div>
-        
+
         {/* Scrolling Cards Container */}
         <div className="relative">
           {/* Gradient Overlays for scroll indication */}
           <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-landing-surface to-transparent z-10 pointer-events-none"></div>
           <div className="hidden lg:block absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-landing-surface to-transparent z-10 pointer-events-none"></div>
-          
+
           {/* Cards Scroll Container */}
           <div className="overflow-x-auto pb-6 scrollbar-hide">
             <div className="flex gap-6 lg:gap-8" style={{ width: 'max-content' }}>
@@ -134,7 +134,7 @@ export function UseCasesSection() {
                       <div className="w-20 h-20 bg-white/20 rounded-full blur-xl"></div>
                     </div>
                   </div>
-                  
+
                   {/* Card Content */}
                   <div className="p-6">
                     <h3 className="text-2xl font-bold text-landing-text mb-2 group-hover:text-customgpt-primary transition-colors">
@@ -143,12 +143,12 @@ export function UseCasesSection() {
                     <p className="text-landing-text-secondary mb-6 font-medium">
                       {useCase.subtitle}
                     </p>
-                    
+
                     {/* Features List */}
                     <div className="space-y-3">
                       {useCase.features.map((feature, featureIndex) => (
-                        <div 
-                          key={featureIndex} 
+                        <div
+                          key={featureIndex}
                           className="flex items-center gap-3 text-landing-text-secondary"
                         >
                           <div className="w-2 h-2 bg-customgpt-primary rounded-full flex-shrink-0"></div>
@@ -162,7 +162,7 @@ export function UseCasesSection() {
             </div>
           </div>
         </div>
-        
+
         {/* Bottom Stats */}
         <div className="mt-16 text-center">
           <div className="bg-white rounded-2xl p-8 border border-landing-surface-light">
@@ -190,7 +190,7 @@ export function UseCasesSection() {
           </div>
         </div>
       </div>
-      
+
       <style jsx>{`
         .scrollbar-hide {
           -ms-overflow-style: none;

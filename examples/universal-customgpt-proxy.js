@@ -205,10 +205,17 @@ app.post('/api/proxy/projects/:projectId/conversations/:conversationId/messages'
       
       const pump = async () => {
         try {
+          const decoder = new TextDecoder();
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            
+
+            // Debug: Log streaming chunks to see citations
+            const chunk = decoder.decode(value, { stream: true });
+            if (chunk.includes('citation')) {
+              console.log('[STREAM CHUNK WITH CITATIONS]', chunk.substring(0, 500));
+            }
+
             res.write(value);
           }
           res.end();
