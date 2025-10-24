@@ -2,6 +2,8 @@
 
 import Script from 'next/script';
 
+const isProduction = process.env.NEXT_PUBLIC_DEPLOYMENT_ENV === 'production';
+
 /**
  * Google Analytics Component
  *
@@ -16,6 +18,10 @@ import Script from 'next/script';
 export function GoogleAnalytics() {
   const GTM_ID = 'GTM-W2BS4MV';
   const GA4_MEASUREMENT_ID = 'G-DE578B4ZFX';
+
+  if (!isProduction) {
+    return null;
+  }
 
   return (
     <>
@@ -67,6 +73,10 @@ export function GoogleAnalytics() {
  */
 export function GTMNoScript() {
   const GTM_ID = 'GTM-W2BS4MV';
+
+  if (!isProduction) {
+    return null;
+  }
 
   return (
     <iframe
