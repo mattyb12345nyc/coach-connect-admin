@@ -36,10 +36,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Bot, 
-  MessageSquare, 
-  User, 
+import {
+  MessageSquare,
+  User,
   Home,
   Settings
 } from 'lucide-react';
@@ -74,7 +73,6 @@ export const Navbar: React.FC<NavbarProps> = ({ showBackButton = true }) => {
    */
   const navigationItems = [
     { href: '/', label: 'Chat', icon: MessageSquare },
-    { href: '/projects', label: 'Projects', icon: Bot },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
@@ -101,14 +99,14 @@ export const Navbar: React.FC<NavbarProps> = ({ showBackButton = true }) => {
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center">
-                <img 
-                  src="/logo.png" 
-                  alt="CustomGPT.ai Logo" 
+                <img
+                  src="/logo.png"
+                  alt="Coach Connect Logo"
                   className="w-8 h-8 rounded-lg"
                 />
               </div>
-              <span className="text-lg font-semibold text-foreground hidden sm:block">
-                Developer Starter Kit
+              <span className="text-lg font-semibold text-foreground hidden sm:block font-[var(--font-playfair)]">
+                Coach Connect Admin
               </span>
             </Link>
           </div>

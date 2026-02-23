@@ -52,12 +52,13 @@ module.exports = {
         'sidebar-border': 'var(--sidebar-border)',
         'sidebar-hover': 'var(--sidebar-hover)',
         
-        // CustomGPT Brand Colors
-        'customgpt-primary': '#EE55FF',
-        'customgpt-secondary': '#7E76FF', 
-        'customgpt-accent': '#BCFCFF',
-        'customgpt-dark-blue': '#602ffc',
-        'customgpt-midtone': '#B9B4FF',
+        // Coach Brand Colors
+        'coach-black': '#1C1917',
+        'coach-cream': '#F5F0EB',
+        'coach-gold': '#C9A227',
+        'coach-brown': '#8B7355',
+        'coach-mahogany': '#5c3d2e',
+        'coach-champagne': '#e8dfd0',
         
         // Landing page specific colors
         'landing-bg': '#FFFFFF',
@@ -83,6 +84,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Playfair Display', 'Georgia', 'serif'],
         mono: ['Fira Code', 'Monaco', 'Consolas', 'monospace'],
       },
       animation: {

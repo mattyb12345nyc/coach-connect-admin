@@ -20,7 +20,7 @@
  */
 
 /* Import fonts from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 /* Tailwind CSS directives */
 @tailwind base;
@@ -37,70 +37,70 @@
  * Usage in Tailwind: bg-background, text-foreground, etc.
  */
 :root {
-  /* Base colors */
-  --background: #ffffff;
-  --background-rgb: 255, 255, 255;
-  --foreground: #171717;
-  
+  /* Base colors - Coach Branding */
+  --background: #F5F0EB;
+  --background-rgb: 245, 240, 235;
+  --foreground: #1C1917;
+
   /* Gradient colors for voice UI */
-  --voice-gradient-from: 147, 51, 234; /* purple-600 */
-  --voice-gradient-via: 236, 72, 153; /* pink-500 */
-  --voice-gradient-to: 251, 146, 60; /* orange-400 */
-  --muted: #f8fafc;
-  --muted-foreground: #64748b;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  
+  --voice-gradient-from: 201, 162, 39; /* coach-gold */
+  --voice-gradient-via: 139, 115, 85; /* coach-brown */
+  --voice-gradient-to: 184, 145, 31; /* darker gold */
+  --muted: #EDE6DD;
+  --muted-foreground: #8B7355;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1917;
+  --card: #FFFFFF;
+  --card-foreground: #1C1917;
+
   /* Border and input colors */
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0a75ff;
-  
-  /* Brand colors */
-  --primary: #0a75ff;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  
+  --border: #D4C9B8;
+  --input: #D4C9B8;
+  --ring: #C9A227;
+
+  /* Brand colors - Coach Gold */
+  --primary: #C9A227;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EDE6DD;
+  --secondary-foreground: #1C1917;
+
   /* State colors */
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
+  --accent: #EDE6DD;
+  --accent-foreground: #1C1917;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --success: #10b981;
   --success-foreground: #ffffff;
   --warning: #f59e0b;
   --warning-foreground: #ffffff;
-  
+
   /* Chat-specific colors */
-  --chat-user-bg: #0a75ff;
-  --chat-user-text: #ffffff;
-  --chat-assistant-bg: #f8fafc;
-  --chat-assistant-text: #0f172a;
-  --chat-border: #e2e8f0;
-  --chat-hover: #f1f5f9;
-  
+  --chat-user-bg: #C9A227;
+  --chat-user-text: #FFFFFF;
+  --chat-assistant-bg: #F5F0EB;
+  --chat-assistant-text: #1C1917;
+  --chat-border: #D4C9B8;
+  --chat-hover: #EDE6DD;
+
   /* Sidebar and navigation */
-  --sidebar-bg: #f8fafc;
-  --sidebar-foreground: #0f172a;
-  --sidebar-border: #e2e8f0;
-  --sidebar-hover: #f1f5f9;
-  
+  --sidebar-bg: #EDE6DD;
+  --sidebar-foreground: #1C1917;
+  --sidebar-border: #D4C9B8;
+  --sidebar-hover: #E5DDD2;
+
   /* Enhanced color variations */
-  --primary-hover: #0864e0;
-  --primary-active: #0652bd;
-  --primary-light: #e6f2ff;
-  --primary-gradient: linear-gradient(135deg, #0a75ff 0%, #0864e0 100%);
-  
+  --primary-hover: #B8911F;
+  --primary-active: #A07D1A;
+  --primary-light: #F5EDD4;
+  --primary-gradient: linear-gradient(135deg, #C9A227 0%, #B8911F 100%);
+
   /* Premium shadows */
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 20px rgba(10, 117, 255, 0.15);
+  --shadow-xs: 0 1px 2px 0 rgba(28, 25, 23, 0.03);
+  --shadow-sm: 0 1px 3px 0 rgba(28, 25, 23, 0.04), 0 1px 2px -1px rgba(28, 25, 23, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(28, 25, 23, 0.05), 0 2px 4px -2px rgba(28, 25, 23, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(28, 25, 23, 0.08), 0 4px 6px -4px rgba(28, 25, 23, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(28, 25, 23, 0.08), 0 8px 10px -6px rgba(28, 25, 23, 0.04);
+  --shadow-glow: 0 0 20px rgba(201, 162, 39, 0.15);
   
   /* Animation timings */
   --transition-fast: 150ms;
@@ -135,70 +135,70 @@
  * Dark theme is activated by adding .dark class to <html> element.
  */
 .dark {
-  /* Base colors */
-  --background: #0a0a0a;
-  --background-rgb: 10, 10, 10;
-  --foreground: #fafafa;
-  
+  /* Base colors - Coach Dark */
+  --background: #1C1917;
+  --background-rgb: 28, 25, 23;
+  --foreground: #F5F0EB;
+
   /* Gradient colors for voice UI (darker for dark theme) */
-  --voice-gradient-from: 88, 28, 135; /* purple-900 */
-  --voice-gradient-via: 157, 23, 77; /* pink-800 */
-  --voice-gradient-to: 154, 52, 18; /* orange-700 */
-  --muted: #1a1a1a;
-  --muted-foreground: #a1a1aa;
-  --popover: #1a1a1a;
-  --popover-foreground: #fafafa;
-  --card: #1a1a1a;
-  --card-foreground: #fafafa;
-  
+  --voice-gradient-from: 160, 125, 26; /* dark gold */
+  --voice-gradient-via: 92, 61, 46; /* coach mahogany */
+  --voice-gradient-to: 139, 115, 85; /* coach brown */
+  --muted: #2A2521;
+  --muted-foreground: #A89880;
+  --popover: #2A2521;
+  --popover-foreground: #F5F0EB;
+  --card: #2A2521;
+  --card-foreground: #F5F0EB;
+
   /* Border and input colors */
-  --border: #2d2d2d;
-  --input: #2d2d2d;
-  --ring: #3b82f6;
-  
+  --border: #3D3630;
+  --input: #3D3630;
+  --ring: #C9A227;
+
   /* Brand colors */
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --secondary: #1f2937;
-  --secondary-foreground: #f9fafb;
-  
+  --primary: #C9A227;
+  --primary-foreground: #1C1917;
+  --secondary: #2A2521;
+  --secondary-foreground: #F5F0EB;
+
   /* State colors */
-  --accent: #1f2937;
-  --accent-foreground: #f9fafb;
+  --accent: #2A2521;
+  --accent-foreground: #F5F0EB;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
   --success: #059669;
   --success-foreground: #ffffff;
   --warning: #d97706;
   --warning-foreground: #ffffff;
-  
+
   /* Chat-specific colors */
-  --chat-user-bg: #3b82f6;
-  --chat-user-text: #ffffff;
-  --chat-assistant-bg: #1f2937;
-  --chat-assistant-text: #f9fafb;
-  --chat-border: #374151;
-  --chat-hover: #2d3748;
-  
+  --chat-user-bg: #C9A227;
+  --chat-user-text: #1C1917;
+  --chat-assistant-bg: #2A2521;
+  --chat-assistant-text: #F5F0EB;
+  --chat-border: #3D3630;
+  --chat-hover: #332E29;
+
   /* Sidebar and navigation */
-  --sidebar-bg: #111111;
-  --sidebar-foreground: #fafafa;
-  --sidebar-border: #2d2d2d;
-  --sidebar-hover: #1f1f1f;
-  
+  --sidebar-bg: #171412;
+  --sidebar-foreground: #F5F0EB;
+  --sidebar-border: #3D3630;
+  --sidebar-hover: #2A2521;
+
   /* Enhanced color variations for dark mode */
-  --primary-hover: #60a5fa;
-  --primary-active: #2563eb;
-  --primary-light: #1e3a5f;
-  --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  
+  --primary-hover: #D4B13A;
+  --primary-active: #B8911F;
+  --primary-light: #3D3520;
+  --primary-gradient: linear-gradient(135deg, #C9A227 0%, #B8911F 100%);
+
   /* Premium shadows for dark mode */
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+  --shadow-glow: 0 0 20px rgba(201, 162, 39, 0.3);
 }
 
 /* Custom scrollbar for overflow containers (tabs, lists) */
@@ -342,13 +342,13 @@ body {
 
 /* Text selection */
 ::selection {
-  background-color: rgba(10, 117, 255, 0.2);
+  background-color: rgba(201, 162, 39, 0.2);
   color: inherit;
 }
 
 /* Focus styles */
 .focus\:ring-brand:focus {
-  --tw-ring-color: rgb(10 117 255 / 0.5);
+  --tw-ring-color: rgb(201 162 39 / 0.5);
 }
 
 /**
@@ -575,12 +575,12 @@ body {
 }
 
 .markdown-content a {
-  color: #0a75ff;
+  color: #C9A227;
   text-decoration: none;
 }
 
 .markdown-content a:hover {
-  color: #0058e6;
+  color: #B8911F;
   text-decoration: underline;
 }
 

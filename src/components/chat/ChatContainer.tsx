@@ -189,7 +189,7 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({ onPromptClick }) => {
           "font-semibold text-foreground mb-2",
           "text-lg sm:text-xl md:text-2xl"
         )}>
-          Welcome to {currentAgent?.project_name || 'CustomGPT'}!
+          Welcome to {currentAgent?.project_name || 'Coach Connect'}!
         </h3>
         <p className={cn(
           "text-muted-foreground mb-6 sm:mb-8",
@@ -611,7 +611,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-foreground truncate">
-                {currentAgent?.project_name || 'CustomGPT Assistant'}
+                {currentAgent?.project_name || 'Coach Connect Assistant'}
               </h2>
               <p className="text-xs text-muted-foreground">
                 {currentAgent?.is_chat_active ? 'Online' : 'Offline'}
@@ -986,7 +986,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
             mode === 'standalone' ? "inline-flex items-center" : "block text-center"
           )}
         >
-          Powered by CustomGPT.ai
+          Powered by Coach Connect
         </a>
       </div>
       

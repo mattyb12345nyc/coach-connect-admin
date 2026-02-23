@@ -25,7 +25,7 @@
  */
 
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import { Toaster } from 'sonner';
 // import { PWAManager } from '@/components/pwa/PWAManager'; // Disabled - Uncomment to enable PWA install prompts
 import { DemoModeProvider } from '@/components/demo/DemoModeProvider';
@@ -58,6 +58,12 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
 /**
  * Page Metadata
  * 
@@ -76,8 +82,8 @@ const inter = Inter({
  * @see https://nextjs.org/docs/app/api-reference/functions/generate-metadata
  */
 export const metadata: Metadata = {
-  title: "Developer Starter Kit",
-  description: "A modern chat interface for CustomGPT.ai's RAG platform",
+  title: "Coach Connect Admin",
+  description: "Admin dashboard for Coach Connect - powered by CustomGPT.ai",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -89,23 +95,17 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "CustomGPT",
-  },
-  alternates: {
-    types: {
-      'application/json+oembed': `/api/oembed?url=${encodeURIComponent('https://starterkit.customgpt.ai')}&format=json`,
-      'text/xml+oembed': `/api/oembed?url=${encodeURIComponent('https://starterkit.customgpt.ai')}&format=xml`,
-    },
+    title: "Coach Connect",
   },
   other: {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "CustomGPT",
-    "application-name": "CustomGPT",
-    "msapplication-TileColor": "#6366f1",
+    "apple-mobile-web-app-title": "Coach Connect",
+    "application-name": "Coach Connect",
+    "msapplication-TileColor": "#C9A227",
     "msapplication-tap-highlight": "no",
-    "theme-color": "#6366f1",
+    "theme-color": "#C9A227",
   },
 };
 
@@ -188,7 +188,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
         {/* GTM NoScript Fallback */}
         <noscript>
           <GTMNoScript />

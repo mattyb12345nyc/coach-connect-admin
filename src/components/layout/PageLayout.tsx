@@ -83,7 +83,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   children, 
   showNavbar = true, 
   showBackButton = true,
-  pageTitle = 'CustomGPT',
+  pageTitle = 'Coach Connect',
   showMobileNavigation = true,
   unreadCount = 0,
   onAgentSelect
@@ -143,9 +143,9 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
           title={pageTitle}
           leftIcon={
             <div className="flex items-center gap-2">
-              <img 
-                src="/logo.png" 
-                alt="CustomGPT" 
+              <img
+                src="/logo.png"
+                alt="Coach Connect"
                 className="w-6 h-6 rounded"
               />
             </div>

@@ -48,132 +48,56 @@ export const useAgentStore = create<AgentStore>()(
       paginationMeta: undefined,
 
       /**
-       * Fetch agents from the API with enterprise-scale pagination
-       * 
-       * Strategy for 1000+ projects:
-       * - Load first batch (100 items) immediately for UI responsiveness
-       * - Load additional batches as needed via loadMoreAgents()
-       * - Auto-selects first agent if none selected
-       * - Maintains total count for pagination UI
+       * Fetch the locked Coach Connect project (ID 90868)
+       *
+       * This instance is locked to a single project for Coach Connect.
        */
       fetchAgents: async () => {
         set({ loading: true, error: null });
-        
+
+        const LOCKED_PROJECT_ID = 90868;
+
         try {
           const client = getClient();
-          
-          // Load first batch with larger page size for better UX
-          const response = await client.getAgents({ page: 1, per_page: 100 });
-          
-          let agents: Agent[] = [];
-          let total = 0;
-          let hasMore = false;
-          
-          // Handle different response formats from the API
-          if (response && typeof response === 'object') {
-            // Check for nested pagination format: { data: { data: [...], total: ..., current_page: ... } }
-            if ('data' in response && (response as any).data && typeof (response as any).data === 'object' && 'data' in (response as any).data) {
-              const nestedData = (response as any).data;
-              agents = Array.isArray(nestedData.data) ? nestedData.data : [];
-              total = nestedData.total || agents.length;
-              const currentPage = nestedData.current_page || 1;
-              const perPage = nestedData.per_page || 100;
-              hasMore = nestedData.last_page ? currentPage < nestedData.last_page : false;
-            } else if ('data' in response && 'total' in response) {
-              // Flat paginated response format
-              const paginatedResponse = response as { data: Agent[]; total: number; page: number; per_page: number };
-              agents = paginatedResponse.data;
-              total = paginatedResponse.total;
-              hasMore = total > paginatedResponse.per_page;
-            } else if (Array.isArray((response as any).data)) {
-              // Legacy format: { data: [...] }
-              agents = (response as any).data;
-              total = agents.length;
-              hasMore = false;
-            } else if (Array.isArray(response)) {
-              // Legacy format: [...]
-              agents = response as Agent[];
-              total = agents.length;
-              hasMore = false;
+
+          // Fetch only the locked project by ID
+          const response = await client.getAgent(LOCKED_PROJECT_ID);
+          const agent = response.data;
+          const agents = agent ? [agent] : [];
+
+          set({
+            agents,
+            loading: false,
+            paginationMeta: {
+              currentPage: 1,
+              totalCount: 1,
+              hasMore: false,
+              perPage: 1
+            },
+            currentAgent: agents.length > 0 ? agents[0] : null
+          });
+
+          // Fetch settings for the agent
+          if (agent) {
+            try {
+              const settingsResponse = await client.getAgentSettings(LOCKED_PROJECT_ID);
+              if (settingsResponse && settingsResponse.data) {
+                const agentWithSettings = { ...agent, settings: settingsResponse.data };
+                set({
+                  agents: [agentWithSettings],
+                  currentAgent: agentWithSettings
+                });
+              }
+            } catch (error) {
+              console.error('Failed to fetch agent settings:', error);
             }
           }
-          
-          set({ 
-            agents, 
-            loading: false,
-            // Always update pagination metadata with fresh data
-            paginationMeta: { 
-              currentPage: 1, 
-              totalCount: total, 
-              hasMore,
-              perPage: 100
-            },
-            // Auto-select first agent if none selected
-            currentAgent: get().currentAgent || (agents.length > 0 ? agents[0] : null)
-          });
-          
-          // Fetch settings for all agents to get avatars
-          const fetchSettingsForAgents = async () => {
-            const client = getClient();
-            const agentsWithoutSettings = agents.filter(agent => !agent.settings);
-            
-            if (agentsWithoutSettings.length === 0) return;
-            
-            // Process in batches of 5 to avoid overwhelming the API
-            const batchSize = 5;
-            for (let i = 0; i < agentsWithoutSettings.length; i += batchSize) {
-              const batch = agentsWithoutSettings.slice(i, i + batchSize);
-              
-              // Fetch settings in parallel for this batch
-              const settingsPromises = batch.map(async (agent) => {
-                try {
-                  const settingsResponse = await client.getAgentSettings(agent.id);
-                  if (settingsResponse && settingsResponse.data) {
-                    return { agent, settings: settingsResponse.data };
-                  }
-                } catch (error) {
-                  console.error(`Failed to fetch settings for agent ${agent.id}:`, error);
-                }
-                return null;
-              });
-              
-              const settingsResults = await Promise.all(settingsPromises);
-              const validResults = settingsResults.filter(result => result !== null);
-              
-              if (validResults.length > 0) {
-                // Update agents with their settings
-                set(state => ({
-                  agents: state.agents.map(a => {
-                    const result = validResults.find(r => r!.agent.id === a.id);
-                    return result ? { ...a, settings: result.settings } : a;
-                  }),
-                  // Also update current agent if it matches
-                  currentAgent: state.currentAgent 
-                    ? (() => {
-                        const result = validResults.find(r => r!.agent.id === state.currentAgent!.id);
-                        return result ? { ...state.currentAgent, settings: result.settings } : state.currentAgent;
-                      })()
-                    : state.currentAgent
-                }));
-              }
-              
-              // Small delay between batches to be kind to the API
-              if (i + batchSize < agentsWithoutSettings.length) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-              }
-            }
-          };
-          
-          // Fetch settings in the background without blocking the UI
-          fetchSettingsForAgents().catch(error => {
-            console.error('Failed to fetch agent settings:', error);
-          });
         } catch (error) {
-          console.error('Failed to fetch agents:', error);
-          set({ 
-            agents: [], 
-            error: error instanceof Error ? error.message : 'Failed to fetch agents',
-            loading: false 
+          console.error('Failed to fetch agent:', error);
+          set({
+            agents: [],
+            error: error instanceof Error ? error.message : 'Failed to fetch agent',
+            loading: false
           });
         }
       },
