@@ -248,11 +248,6 @@ export const BehaviorSettings: React.FC<BehaviorSettingsProps> = ({ project }) =
                   </p>
                 </div>
               </div>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className="space-y-4">
@@ -328,11 +323,6 @@ export const BehaviorSettings: React.FC<BehaviorSettingsProps> = ({ project }) =
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Knowledge Source</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             <p className={cn(
               "text-muted-foreground mb-4",
@@ -410,11 +400,6 @@ export const BehaviorSettings: React.FC<BehaviorSettingsProps> = ({ project }) =
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Language Settings</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div>

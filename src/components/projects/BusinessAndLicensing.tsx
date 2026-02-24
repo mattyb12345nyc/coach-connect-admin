@@ -420,11 +420,6 @@ export const BusinessAndLicensing: React.FC<BusinessAndLicensingProps> = ({ proj
                 Configure selling and monetization options
               </p>
             </div>
-            {!isMobile && (
-              <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                POST /projects/{project.id}/settings
-              </span>
-            )}
           </div>
 
           <div className="space-y-4">
@@ -524,11 +519,6 @@ export const BusinessAndLicensing: React.FC<BusinessAndLicensingProps> = ({ proj
                   Create and manage access licenses for your chatbot
                 </p>
               </div>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  /projects/{project.id}/licenses
-                </span>
-              )}
             </div>
 
             {/* Create/Edit License Form */}

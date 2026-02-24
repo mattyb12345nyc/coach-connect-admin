@@ -555,19 +555,6 @@ export const SourcesSettings: React.FC<SourcesSettingsProps> = ({ project }) => 
         </div>
       </div>
 
-      {/* API Route Info */}
-      <div className={cn(
-        "mb-4",
-        isMobile ? "text-center" : "flex justify-end"
-      )}>
-        <span className={cn(
-          "text-muted-foreground font-mono bg-accent px-2 py-1 rounded",
-          isMobile ? "text-xs" : "text-xs"
-        )}>
-          POST /projects/{project.id}/sources
-        </span>
-      </div>
-
       {/* Error State */}
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">

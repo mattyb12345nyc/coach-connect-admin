@@ -256,11 +256,6 @@ export const MessagesAndCitations: React.FC<MessagesAndCitationsProps> = ({ proj
                   Configure how citations and sources are displayed in responses
                 </p>
               </div>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className={cn("grid gap-6", isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}>
@@ -371,11 +366,6 @@ export const MessagesAndCitations: React.FC<MessagesAndCitationsProps> = ({ proj
                   Customize system messages and citation labels
                 </p>
               </div>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
 
             <div className="space-y-6">

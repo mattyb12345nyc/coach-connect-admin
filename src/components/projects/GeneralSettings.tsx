@@ -234,11 +234,6 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ project }) => 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Project Information</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}
-                </span>
-              )}
             </div>
             
             <div className={cn(
@@ -295,11 +290,6 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ project }) => 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Default Prompt</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div>
@@ -336,11 +326,6 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ project }) => 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Example Questions</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  GET /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
               <p className="text-sm text-amber-600 dark:text-amber-400">
@@ -388,11 +373,6 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ project }) => 
                 "font-semibold text-red-600 dark:text-red-400",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Danger Zone</h3>
-              {!isMobile && (
-                <span className="text-xs text-red-600 dark:text-red-400 font-mono bg-red-500/10 px-2 py-1 rounded">
-                  DELETE /projects/{project.id}
-                </span>
-              )}
             </div>
             
             <div className="space-y-4">

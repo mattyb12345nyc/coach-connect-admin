@@ -333,11 +333,6 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ project 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Chatbot Avatar</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className={cn(
@@ -418,11 +413,6 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ project 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Chat Background</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className="space-y-4">
@@ -582,11 +572,6 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ project 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Color Theme</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className={cn(
@@ -680,11 +665,6 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ project 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Chat Interface</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className="space-y-4">
@@ -776,11 +756,6 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ project 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>User Avatar Configuration</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className="space-y-4">
@@ -896,11 +871,6 @@ export const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ project 
                 "font-semibold text-foreground",
                 isMobile ? "text-base mobile-text-lg" : "text-lg"
               )}>Spotlight Avatar Configuration</h3>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className="space-y-4">

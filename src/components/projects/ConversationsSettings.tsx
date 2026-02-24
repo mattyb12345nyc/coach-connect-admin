@@ -156,21 +156,12 @@ export const ConversationsSettings: React.FC<ConversationsSettingsProps> = ({ pr
             <RefreshCw className={cn('w-4 h-4 mr-1.5', loading && 'animate-spin')} />
             Refresh
           </Button>
-          
-          {!isMobile && (
-            <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-              GET /projects/{project.id}/conversations
-            </span>
-          )}
         </div>
       </div>
 
       {/* API Route Info - Mobile */}
       {isMobile && (
         <div className="mb-4 text-center">
-          <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-            GET /projects/{project.id}/conversations
-          </span>
         </div>
       )}
 

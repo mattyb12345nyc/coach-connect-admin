@@ -202,11 +202,6 @@ export const SecurityAndPrivacy: React.FC<SecurityAndPrivacyProps> = ({ project 
                   Configure deployment security and access restrictions
                 </p>
               </div>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className="space-y-6">
@@ -296,11 +291,6 @@ export const SecurityAndPrivacy: React.FC<SecurityAndPrivacyProps> = ({ project 
                   Configure how long conversations and data are stored
                 </p>
               </div>
-              {!isMobile && (
-                <span className="text-xs text-muted-foreground font-mono bg-accent px-2 py-1 rounded">
-                  POST /projects/{project.id}/settings
-                </span>
-              )}
             </div>
             
             <div className="space-y-6">

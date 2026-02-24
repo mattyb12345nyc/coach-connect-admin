@@ -219,9 +219,6 @@ export const AnalyticsSettings: React.FC<AnalyticsSettingsProps> = ({ project })
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded">
-              POST /projects/{project.id}/analytics/export
-            </span>
           </div>
         </div>
       </div>
@@ -296,9 +293,6 @@ export const AnalyticsSettings: React.FC<AnalyticsSettingsProps> = ({ project })
             <>
               {/* Key Metrics */}
               <div className="flex justify-end mb-4">
-                <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded">
-                  GET /projects/{project.id}/analytics
-                </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="p-6">
@@ -526,9 +520,6 @@ export const AnalyticsSettings: React.FC<AnalyticsSettingsProps> = ({ project })
       <Card className="p-6">
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Analytics Settings</h3>
-          <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded">
-            POST /projects/{project.id}/analytics/settings
-          </span>
         </div>
         
         <div className="space-y-6">
