@@ -41,7 +41,8 @@ import {
   LayoutDashboard,
   User,
   Home,
-  Settings
+  Settings,
+  Mic
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -75,6 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({ showBackButton = true }) => {
   const navigationItems = [
     { href: '/', label: 'Chat', icon: MessageSquare },
     { href: '/projects', label: 'Manage', icon: LayoutDashboard },
+    { href: '/voice-agents', label: 'Voice Agents', icon: Mic },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
