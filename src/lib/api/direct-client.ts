@@ -307,6 +307,20 @@ export class DirectCustomGPTClient {
     });
   }
 
+  async exportConversation(
+    projectId: number,
+    sessionId: string,
+    params?: { format?: string }
+  ): Promise<APIResponse<unknown>> {
+    const queryParams = new URLSearchParams();
+    if (params?.format) queryParams.append('format', params.format);
+    const queryString = queryParams.toString();
+    return this.request(
+      `/projects/${projectId}/conversations/${sessionId}/export${queryString ? `?${queryString}` : ''}`,
+      { headers: { Accept: 'application/json, text/plain, */*' } }
+    );
+  }
+
   // Message Management
   async getMessages(
     projectId: number,

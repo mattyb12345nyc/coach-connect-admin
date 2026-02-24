@@ -284,11 +284,6 @@ export const PageManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // Mock data - in real app, this would come from API endpoints:
-  // GET /api/v1/projects/{projectId}/pages
-  // POST /api/v1/projects/{projectId}/pages
-  // PUT /api/v1/projects/{projectId}/pages/{pageId}
-  // DELETE /api/v1/projects/{projectId}/pages/{pageId}
-
   const [documents] = useState<Document[]>([
     {
       id: 1,

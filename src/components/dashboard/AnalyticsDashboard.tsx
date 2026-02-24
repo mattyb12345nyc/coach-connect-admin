@@ -164,11 +164,6 @@ export const AnalyticsDashboard: React.FC = () => {
   }, [fetchAgents]);
 
   // Mock data - in real app, this would come from API endpoints:
-  // GET /api/v1/projects/{projectId}/reports/traffic
-  // GET /api/v1/projects/{projectId}/reports/queries
-  // GET /api/v1/projects/{projectId}/reports/conversations
-  // GET /api/v1/projects/{projectId}/reports/analysis
-
   const metrics = [
     {
       title: 'Total Conversations',

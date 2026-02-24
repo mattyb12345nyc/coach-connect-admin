@@ -504,6 +504,20 @@ export class ProxyCustomGPTClient {
     });
   }
 
+  async exportConversation(
+    projectId: number,
+    sessionId: string,
+    params?: { format?: string }
+  ): Promise<APIResponse<unknown>> {
+    const queryParams = new URLSearchParams();
+    if (params?.format) queryParams.append('format', params.format);
+    const queryString = queryParams.toString();
+    return this.request(
+      `/projects/${projectId}/conversations/${sessionId}/export${queryString ? `?${queryString}` : ''}`,
+      { headers: { Accept: 'application/json, text/plain, */*' } }
+    );
+  }
+
   // Message Management
   async getMessages(
     projectId: number,
@@ -614,6 +628,26 @@ export class ProxyCustomGPTClient {
     return this.request(`/projects/${projectId}/conversations/${sessionId}/messages/${messageId}`);
   }
 
+  async getMessageClaims(
+    projectId: number,
+    sessionId: string,
+    promptId: number
+  ): Promise<APIResponse<unknown>> {
+    return this.request(
+      `/projects/${projectId}/conversations/${sessionId}/messages/${promptId}/claims`
+    );
+  }
+
+  async getMessageTrustScore(
+    projectId: number,
+    sessionId: string,
+    promptId: number
+  ): Promise<APIResponse<unknown>> {
+    return this.request(
+      `/projects/${projectId}/conversations/${sessionId}/messages/${promptId}/trust-score`
+    );
+  }
+
   async updateMessageFeedback(
     projectId: number,
     sessionId: string,
@@ -712,6 +746,10 @@ export class ProxyCustomGPTClient {
       method: 'PUT',
       body: JSON.stringify(metadata),
     });
+  }
+
+  async getPageLabels(projectId: number, pageId: number): Promise<APIResponse<unknown>> {
+    return this.request(`/projects/${projectId}/pages/${pageId}/labels`);
   }
 
   // NOTE: This endpoint is not documented in the API

@@ -297,13 +297,6 @@ export const DataSourceManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(false);
 
-  // Mock data - in real app, this would come from API endpoints:
-  // GET /api/v1/projects/{projectId}/sources
-  // POST /api/v1/projects/{projectId}/sources
-  // PUT /api/v1/projects/{projectId}/sources/{sourceId}
-  // DELETE /api/v1/projects/{projectId}/sources/{sourceId}
-  // POST /api/v1/projects/{projectId}/sources/{sourceId}/sync
-
   const [dataSources] = useState<DataSource[]>([
     {
       id: 1,

@@ -285,6 +285,9 @@ function ProjectsPageContent() {
   const searchParams = useSearchParams();
   const projectIdFromUrl = searchParams.get('id');
   const tabFromUrl = searchParams.get('tab') as SettingsTab;
+  const defaultCoachProjectId = typeof process.env.NEXT_PUBLIC_COACH_PROJECT_ID !== 'undefined'
+    ? process.env.NEXT_PUBLIC_COACH_PROJECT_ID
+    : '90868';
 
   /**
    * Load projects on mount
@@ -295,13 +298,13 @@ function ProjectsPageContent() {
   }, [fetchAgents]);
 
   /**
-   * Auto-select project based on URL parameter or first project
-   * 1. First, try to select project from URL parameter
-   * 2. Otherwise, select the first project in the list
+   * Auto-select project based on URL parameter, Coach default (90868), or first project
+   * 1. If URL has project ID, use that project
+   * 2. If no URL id, prefer Coach project ID (90868) when in list
+   * 3. Otherwise select the first project
    */
   useEffect(() => {
     if (agents.length > 0) {
-      // If URL has project ID, find and select that project
       if (projectIdFromUrl) {
         const projectFromUrl = agents.find(p => p.id.toString() === projectIdFromUrl);
         if (projectFromUrl) {
@@ -309,13 +312,15 @@ function ProjectsPageContent() {
           return;
         }
       }
-      
-      // Otherwise, select first project if none selected
       if (!selectedProject) {
-        setSelectedProject(agents[0]);
+        const coachProject = agents.find(p => p.id.toString() === defaultCoachProjectId);
+        setSelectedProject(coachProject ?? agents[0]);
+        if (!projectIdFromUrl && coachProject) {
+          router.replace(`/projects?id=${defaultCoachProjectId}`, { scroll: false });
+        }
       }
     }
-  }, [agents, projectIdFromUrl, selectedProject]); // Remove selectedProject from dependencies to avoid infinite loop
+  }, [agents, projectIdFromUrl, defaultCoachProjectId, router]);
 
   /**
    * Set active tab based on URL parameter
@@ -508,7 +513,7 @@ function ProjectsPageContent() {
   return (
     <PageLayout>
       <TurnstileGate>
-        <div className="h-[calc(100vh-4rem)] flex bg-background relative">
+        <div className="h-[calc(100vh-4rem)] flex bg-coach-cream relative">
           {/* Left Sidebar - Project List */}
         <div 
           ref={sidebarRef}
@@ -518,7 +523,7 @@ function ProjectsPageContent() {
           {/* Sidebar Header */}
           <div className="p-5 border-b border-border">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-bold text-foreground">Projects</h1>
+              <h1 className="text-xl font-bold text-foreground font-display">Projects</h1>
               {/* Refresh button */}
               <Button
                 variant="outline"
@@ -659,7 +664,7 @@ function ProjectsPageContent() {
             <div className="w-56 bg-card border-r border-border flex flex-col flex-shrink-0">
               {/* Selected project header */}
               <div className="p-3 border-b border-border flex-shrink-0">
-                <h2 className="text-sm font-semibold text-foreground truncate">
+                <h2 className="text-sm font-semibold text-foreground truncate font-display">
                   {selectedProject.project_name}
                 </h2>
                 <p className="text-xs text-muted-foreground">Project Settings</p>
@@ -672,7 +677,10 @@ function ProjectsPageContent() {
                     key={tab.id}
                     tab={tab}
                     isActive={activeTab === tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      router.replace(`/projects?id=${selectedProject.id}&tab=${tab.id}`, { scroll: false });
+                    }}
                   />
                 ))}
               </div>

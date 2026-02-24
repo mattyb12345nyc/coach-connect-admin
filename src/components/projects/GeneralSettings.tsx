@@ -274,6 +274,22 @@ export const GeneralSettings: React.FC<GeneralSettingsProps> = ({ project }) => 
                   )}
                 />
               </div>
+              {project.sitemap_path && (
+                <div className={cn('md:col-span-2', isMobile && 'grid-cols-1')}>
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">
+                    Sitemap path
+                  </label>
+                  <input
+                    type="text"
+                    value={project.sitemap_path}
+                    disabled
+                    className={cn(
+                      "w-full border border-border rounded-lg bg-accent text-muted-foreground cursor-not-allowed",
+                      isMobile ? "px-4 py-3 text-base mobile-input" : "px-3 py-2"
+                    )}
+                  />
+                </div>
+              )}
             </div>
           </Card>
 

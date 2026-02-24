@@ -10,7 +10,8 @@ import {
   MessageSquare,
   RefreshCw,
   AlertCircle,
-  Search
+  Search,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -108,6 +109,30 @@ export const ConversationsSettings: React.FC<ConversationsSettingsProps> = ({ pr
     }
   };
 
+  const handleExportConversation = async (sessionId: string) => {
+    if (isFreeTrialMode) {
+      toast.error('Export is not available in free trial mode');
+      return;
+    }
+    if (!isClientInitialized()) return;
+    try {
+      const client = getClient();
+      const result = await client.exportConversation(project.id, sessionId);
+      if (result?.data && typeof (result as any).data === 'object') {
+        const blob = new Blob([JSON.stringify((result as any).data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `conversation-${sessionId}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      toast.success('Conversation exported');
+    } catch (err) {
+      const errorData = handleApiError(err);
+      toast.error('Failed to export conversation', { description: errorData.message });
+    }
+  };
 
   // Filter conversations
   const filteredConversations = conversations.filter(conv => {
@@ -158,12 +183,6 @@ export const ConversationsSettings: React.FC<ConversationsSettingsProps> = ({ pr
           </Button>
         </div>
       </div>
-
-      {/* API Route Info - Mobile */}
-      {isMobile && (
-        <div className="mb-4 text-center">
-        </div>
-      )}
 
       {/* Error State */}
       {error && (
@@ -335,7 +354,17 @@ export const ConversationsSettings: React.FC<ConversationsSettingsProps> = ({ pr
                         <Eye className="w-4 h-4 mr-1.5" />
                         {isMobile ? 'View' : 'View Messages'}
                       </Button>
-                      
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleExportConversation(conversation.session_id)}
+                        disabled={isFreeTrialMode}
+                        className={isMobile ? "h-8 px-3 text-xs" : ""}
+                        title="Export conversation"
+                      >
+                        <Download className="w-4 h-4 mr-1.5" />
+                        Export
+                      </Button>
                       <Button 
                         size="sm" 
                         variant="ghost"
