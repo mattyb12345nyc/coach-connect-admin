@@ -38,6 +38,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   MessageSquare,
+  LayoutDashboard,
   User,
   Home,
   Settings
@@ -73,6 +74,7 @@ export const Navbar: React.FC<NavbarProps> = ({ showBackButton = true }) => {
    */
   const navigationItems = [
     { href: '/', label: 'Chat', icon: MessageSquare },
+    { href: '/projects', label: 'Manage', icon: LayoutDashboard },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
