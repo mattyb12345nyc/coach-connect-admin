@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -230,8 +229,7 @@ export default function UsersPage() {
   };
 
   return (
-    <PageLayout showNavbar={false} showMobileNavigation={false}>
-      <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
+    <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -677,7 +675,6 @@ export default function UsersPage() {
             </div>
           )}
         </div>
-      </div>
-    </PageLayout>
+    </div>
   );
 }

@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -173,8 +172,7 @@ export default function ChatSettingsPage() {
   };
 
   return (
-    <PageLayout>
-      <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
+    <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
@@ -482,7 +480,6 @@ export default function ChatSettingsPage() {
             </div>
           </Card>
         </div>
-      </div>
-    </PageLayout>
+    </div>
   );
 }

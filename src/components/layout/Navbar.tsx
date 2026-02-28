@@ -75,7 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({ showBackButton = true }) => {
    */
   const navigationItems = [
     { href: '/', label: 'Chat', icon: MessageSquare },
-    { href: '/projects', label: 'Manage', icon: LayoutDashboard },
+    { href: '/admin/today', label: 'Admin', icon: LayoutDashboard },
     { href: '/voice-agents', label: 'Voice Agents', icon: Mic },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/settings', label: 'Settings', icon: Settings },
@@ -91,6 +91,9 @@ export const Navbar: React.FC<NavbarProps> = ({ showBackButton = true }) => {
   const isActive = (href: string) => {
     if (href === '/') {
       return pathname === '/';
+    }
+    if (href === '/admin/today') {
+      return pathname.startsWith('/admin');
     }
     return pathname.startsWith(href);
   };

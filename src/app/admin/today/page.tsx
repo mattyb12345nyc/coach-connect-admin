@@ -16,7 +16,6 @@ import {
   Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -530,20 +529,17 @@ export default function TodayDashboardPage() {
 
   if (loading) {
     return (
-      <PageLayout>
-        <div className="min-h-[calc(100vh-4rem)] bg-gray-50 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-coach-gold" />
-            <p className="text-sm text-gray-500">Loading dashboard...</p>
-          </div>
+      <div className="min-h-[calc(100vh-4rem)] bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-coach-gold" />
+          <p className="text-sm text-gray-500">Loading dashboard...</p>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout>
-      <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
+    <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
@@ -712,7 +708,6 @@ export default function TodayDashboardPage() {
             </section>
           </div>
         </div>
-      </div>
-    </PageLayout>
+    </div>
   );
 }
