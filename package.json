@@ -27,6 +27,7 @@
     "@radix-ui/react-switch": "^1.2.5",
     "@radix-ui/react-tooltip": "^1.0.7",
     "@ricky0123/vad-react": "^0.0.18",
+    "@supabase/supabase-js": "^2.98.0",
     "@types/dompurify": "^3.0.5",
     "@upstash/redis": "^1.35.4",
     "bcryptjs": "^3.0.2",

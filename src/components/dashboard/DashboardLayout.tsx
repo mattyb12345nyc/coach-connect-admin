@@ -43,6 +43,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -54,7 +55,11 @@ import {
   Menu,
   X,
   Search,
-  ChevronDown
+  ChevronDown,
+  Mic,
+  Users,
+  Sparkles,
+  User
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -73,16 +78,6 @@ interface DashboardLayoutProps {
   currentPage?: string;
 }
 
-/**
- * Navigation item structure
- * 
- * @property id - Unique identifier
- * @property label - Display text
- * @property icon - Lucide icon component
- * @property href - Navigation URL
- * @property badge - Optional notification count
- * @property submenu - Optional nested items
- */
 interface NavItem {
   id: string;
   label: string;
@@ -92,39 +87,40 @@ interface NavItem {
   submenu?: NavItem[];
 }
 
-/**
- * Navigation menu configuration
- * Only includes pages with API support
- */
-const navigation: NavItem[] = [
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const navigationGroups: NavGroup[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    href: '/projects',
+    label: 'App Content',
+    items: [
+      { id: 'today', label: 'Today Dashboard', icon: LayoutDashboard, href: '/admin/today' },
+      { id: 'chat', label: 'Coach Chat', icon: MessageSquare, href: '/admin/chat' },
+      { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice' },
+      { id: 'community', label: 'Community', icon: Users, href: '/admin/community' },
+      { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture' },
+      { id: 'users-mgmt', label: 'Users', icon: User, href: '/admin/users' },
+    ],
   },
   {
-    id: 'agents',
-    label: 'Agents',
-    icon: Bot,
-    href: '/projects',
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: BarChart3,
-    href: '/dashboard/analytics',
-    submenu: [
-      { id: 'analytics-overview', label: 'Overview', icon: BarChart3, href: '/dashboard/analytics' },
-      { id: 'analytics-traffic', label: 'Traffic', icon: BarChart3, href: '/dashboard/analytics/traffic' },
-      { id: 'analytics-queries', label: 'Queries', icon: BarChart3, href: '/dashboard/analytics/queries' },
-    ]
-  },
-  {
-    id: 'sources',
-    label: 'Data Sources',
-    icon: Database,
-    href: '/dashboard/sources',
+    label: 'System',
+    items: [
+      { id: 'agents', label: 'Agents', icon: Bot, href: '/projects' },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: BarChart3,
+        href: '/dashboard/analytics',
+        submenu: [
+          { id: 'analytics-overview', label: 'Overview', icon: BarChart3, href: '/dashboard/analytics' },
+          { id: 'analytics-traffic', label: 'Traffic', icon: BarChart3, href: '/dashboard/analytics/traffic' },
+          { id: 'analytics-queries', label: 'Queries', icon: BarChart3, href: '/dashboard/analytics/queries' },
+        ],
+      },
+      { id: 'sources', label: 'Data Sources', icon: Database, href: '/dashboard/sources' },
+    ],
   },
 ];
 
@@ -205,11 +201,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children, 
   currentPage = 'dashboard' 
 }) => {
+  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleNavigation = (item: NavItem) => {
-    // Navigation handled by router
+    router.push(item.href);
   };
 
   const toggleSidebar = () => {
@@ -252,15 +249,26 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navigation.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              isActive={currentPage === item.id}
-              isCollapsed={sidebarCollapsed}
-              onItemClick={handleNavigation}
-            />
+        <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+          {navigationGroups.map((group) => (
+            <div key={group.label}>
+              {!sidebarCollapsed && (
+                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {group.label}
+                </p>
+              )}
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <NavItem
+                    key={item.id}
+                    item={item}
+                    isActive={currentPage === item.id}
+                    isCollapsed={sidebarCollapsed}
+                    onItemClick={handleNavigation}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
@@ -284,18 +292,27 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <nav className="p-4 space-y-1">
-              {navigation.map((item) => (
-                <NavItem
-                  key={item.id}
-                  item={item}
-                  isActive={currentPage === item.id}
-                  isCollapsed={false}
-                  onItemClick={(item) => {
-                    handleNavigation(item);
-                    setMobileMenuOpen(false);
-                  }}
-                />
+            <nav className="p-4 space-y-4">
+              {navigationGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {group.label}
+                  </p>
+                  <div className="space-y-1">
+                    {group.items.map((item) => (
+                      <NavItem
+                        key={item.id}
+                        item={item}
+                        isActive={currentPage === item.id}
+                        isCollapsed={false}
+                        onItemClick={(navItem) => {
+                          handleNavigation(navItem);
+                          setMobileMenuOpen(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </nav>
           </aside>
