@@ -49,7 +49,10 @@ create table if not exists whats_new_items (
 -- Culture Feed
 -- =============================================
 
-create type culture_item_type as enum ('trend', 'styling', 'news');
+do $$ begin
+  create type culture_item_type as enum ('trend', 'styling', 'news');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists culture_feed_items (
   id uuid primary key default gen_random_uuid(),
@@ -70,8 +73,15 @@ create table if not exists culture_feed_items (
 -- Community
 -- =============================================
 
-create type post_type as enum ('insight', 'success', 'question');
-create type post_status as enum ('active', 'hidden', 'removed');
+do $$ begin
+  create type post_type as enum ('insight', 'success', 'question');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type post_status as enum ('active', 'hidden', 'removed');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists community_posts (
   id uuid primary key default gen_random_uuid(),
@@ -116,7 +126,10 @@ create table if not exists practice_personas (
 -- Users
 -- =============================================
 
-create type user_role as enum ('associate', 'manager', 'admin');
+do $$ begin
+  create type user_role as enum ('associate', 'manager', 'admin');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists app_users (
   id uuid primary key default gen_random_uuid(),
@@ -186,6 +199,15 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists trg_today_focus_cards_updated on today_focus_cards;
+drop trigger if exists trg_cultural_moments_updated on cultural_moments;
+drop trigger if exists trg_whats_new_items_updated on whats_new_items;
+drop trigger if exists trg_culture_feed_items_updated on culture_feed_items;
+drop trigger if exists trg_community_posts_updated on community_posts;
+drop trigger if exists trg_practice_personas_updated on practice_personas;
+drop trigger if exists trg_app_users_updated on app_users;
+drop trigger if exists trg_chat_quick_actions_updated on chat_quick_actions;
+
 create trigger trg_today_focus_cards_updated before update on today_focus_cards for each row execute function update_updated_at();
 create trigger trg_cultural_moments_updated before update on cultural_moments for each row execute function update_updated_at();
 create trigger trg_whats_new_items_updated before update on whats_new_items for each row execute function update_updated_at();
@@ -211,6 +233,17 @@ alter table user_achievements enable row level security;
 alter table chat_quick_actions enable row level security;
 
 -- Allow service role (admin dashboard) full access
+drop policy if exists "Service role full access" on today_focus_cards;
+drop policy if exists "Service role full access" on cultural_moments;
+drop policy if exists "Service role full access" on whats_new_items;
+drop policy if exists "Service role full access" on culture_feed_items;
+drop policy if exists "Service role full access" on community_posts;
+drop policy if exists "Service role full access" on practice_personas;
+drop policy if exists "Service role full access" on app_users;
+drop policy if exists "Service role full access" on achievements;
+drop policy if exists "Service role full access" on user_achievements;
+drop policy if exists "Service role full access" on chat_quick_actions;
+
 create policy "Service role full access" on today_focus_cards for all using (true) with check (true);
 create policy "Service role full access" on cultural_moments for all using (true) with check (true);
 create policy "Service role full access" on whats_new_items for all using (true) with check (true);
@@ -223,6 +256,17 @@ create policy "Service role full access" on user_achievements for all using (tru
 create policy "Service role full access" on chat_quick_actions for all using (true) with check (true);
 
 -- Allow anon (main app) to read published content
+drop policy if exists "Anon read active focus cards" on today_focus_cards;
+drop policy if exists "Anon read active moments" on cultural_moments;
+drop policy if exists "Anon read active whats new" on whats_new_items;
+drop policy if exists "Anon read published culture" on culture_feed_items;
+drop policy if exists "Anon read active posts" on community_posts;
+drop policy if exists "Anon read active personas" on practice_personas;
+drop policy if exists "Anon read active users" on app_users;
+drop policy if exists "Anon read achievements" on achievements;
+drop policy if exists "Anon read user achievements" on user_achievements;
+drop policy if exists "Anon read active quick actions" on chat_quick_actions;
+
 create policy "Anon read active focus cards" on today_focus_cards for select using (is_active = true);
 create policy "Anon read active moments" on cultural_moments for select using (is_active = true);
 create policy "Anon read active whats new" on whats_new_items for select using (is_active = true);
