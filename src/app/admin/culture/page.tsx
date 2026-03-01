@@ -22,6 +22,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { RoleGate } from '@/components/admin/RoleGate';
 
 type CultureType = 'trend' | 'styling' | 'news';
 type FilterTab = 'all' | CultureType;
@@ -436,6 +437,7 @@ export default function CultureFeedPage() {
   };
 
   return (
+    <RoleGate minRole="manager" readOnlyFor={['manager']}>
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex items-start justify-between mb-8">
@@ -560,5 +562,6 @@ export default function CultureFeedPage() {
           )}
         </div>
     </div>
+    </RoleGate>
   );
 }

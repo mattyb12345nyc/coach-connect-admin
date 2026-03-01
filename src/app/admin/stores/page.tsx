@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { RoleGate } from '@/components/admin/RoleGate';
 
 interface StoreRecord {
   id: string;
@@ -171,6 +172,7 @@ export default function StoresPage() {
   };
 
   return (
+    <RoleGate minRole="manager">
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-8">
@@ -553,5 +555,6 @@ export default function StoresPage() {
         )}
       </div>
     </div>
+    </RoleGate>
   );
 }

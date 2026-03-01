@@ -38,6 +38,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { AgentSettings } from '@/types';
+import { RoleGate } from '@/components/admin/RoleGate';
 
 // ─── Quick Actions types (Supabase) ───
 
@@ -364,6 +365,7 @@ export default function ChatSettingsPage() {
     JSON.stringify(exampleQuestions) !== JSON.stringify(originalSettings.example_questions ?? []);
 
   return (
+    <RoleGate minRole="admin">
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Page Header */}
@@ -973,5 +975,6 @@ export default function ChatSettingsPage() {
         )}
       </div>
     </div>
+    </RoleGate>
   );
 }

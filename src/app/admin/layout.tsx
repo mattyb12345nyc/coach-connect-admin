@@ -14,33 +14,84 @@ import {
   X,
   ChevronLeft,
   Store,
+  Shield,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AdminAuthProvider, useAdminAuth, type AdminRole } from '@/contexts/AdminAuthContext';
 
 interface NavItem {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
+  minRole: 'manager' | 'admin';
 }
 
 const navItems: NavItem[] = [
-  { id: 'today', label: 'Today Dashboard', icon: LayoutDashboard, href: '/admin/today' },
-  { id: 'chat', label: 'Coach Chat', icon: MessageSquare, href: '/admin/chat' },
-  { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice' },
-  { id: 'community', label: 'Community', icon: Users, href: '/admin/community' },
-  { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture' },
-  { id: 'users', label: 'Users', icon: User, href: '/admin/users' },
-  { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores' },
+  { id: 'today', label: 'Today Dashboard', icon: LayoutDashboard, href: '/admin/today', minRole: 'manager' },
+  { id: 'chat', label: 'Coach Chat', icon: MessageSquare, href: '/admin/chat', minRole: 'admin' },
+  { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice', minRole: 'manager' },
+  { id: 'community', label: 'Community', icon: Users, href: '/admin/community', minRole: 'manager' },
+  { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture', minRole: 'manager' },
+  { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'manager' },
+  { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'manager' },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+const ROLE_LEVEL: Record<AdminRole, number> = {
+  associate: 0,
+  manager: 1,
+  admin: 2,
+};
+
+const ROLE_BADGE: Record<AdminRole, { label: string; className: string }> = {
+  associate: { label: 'Associate', className: 'bg-gray-100 text-gray-600' },
+  manager: { label: 'Manager', className: 'bg-blue-100 text-blue-700' },
+  admin: { label: 'Admin', className: 'bg-purple-100 text-purple-700' },
+};
+
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, role, loading } = useAdminAuth();
+
+  const filteredNav = navItems.filter(
+    (item) => ROLE_LEVEL[role] >= ROLE_LEVEL[item.minRole]
+  );
+
+  const badge = ROLE_BADGE[role];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-coach-gold" />
+      </div>
+    );
+  }
+
+  if (ROLE_LEVEL[role] < ROLE_LEVEL['manager']) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+          <Shield className="w-8 h-8 text-red-400" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Access Required</h1>
+        <p className="text-gray-500 max-w-md mb-6">
+          The admin dashboard is only available to store managers and administrators.
+        </p>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-coach-gold text-white hover:bg-coach-gold/90 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back to App
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top bar */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="flex items-center h-14 px-4 gap-3">
           <button
@@ -60,7 +111,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="text-gray-300 hidden sm:block">|</span>
           <span className="text-sm font-medium text-gray-500 hidden sm:block">Admin</span>
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-3">
+            {user && (
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-sm text-gray-600">{user.name}</span>
+                <span className={cn('text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full', badge.className)}>
+                  {badge.label}
+                </span>
+              </div>
+            )}
             <Link
               href="/"
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
@@ -73,7 +132,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </header>
 
       <div className="flex flex-1">
-        {/* Mobile overlay */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 bg-black/40 z-40 lg:hidden"
@@ -81,7 +139,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           />
         )}
 
-        {/* Sidebar */}
         <aside
           className={cn(
             'fixed lg:sticky top-14 left-0 z-40 h-[calc(100vh-3.5rem)] w-60 bg-white border-r border-gray-200 flex flex-col transition-transform lg:translate-x-0',
@@ -92,7 +149,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
               App Content
             </p>
-            {navItems.map((item) => {
+            {filteredNav.map((item) => {
               const active = pathname === item.href;
               return (
                 <Link
@@ -112,13 +169,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               );
             })}
           </nav>
+
+          {user && (
+            <div className="p-3 border-t border-gray-100">
+              <div className="px-3 py-2">
+                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
+                <p className="text-xs text-gray-500 truncate">{user.store || user.email}</p>
+                <span className={cn('inline-block mt-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full', badge.className)}>
+                  {badge.label}
+                </span>
+              </div>
+            </div>
+          )}
         </aside>
 
-        {/* Main content */}
         <main className="flex-1 min-w-0 overflow-auto">
           {children}
         </main>
       </div>
     </div>
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AdminAuthProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </AdminAuthProvider>
   );
 }

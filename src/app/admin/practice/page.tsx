@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Mic, Plus, Trash2, Save, Loader2, Pencil, X, User, ChevronDown, ChevronRight, Brain, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { RoleGate } from '@/components/admin/RoleGate';
 
 type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
@@ -315,6 +316,7 @@ export default function PracticeFloorPage() {
   );
 
   return (
+    <RoleGate minRole="manager" readOnlyFor={['manager']}>
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           {/* Header */}
@@ -683,5 +685,6 @@ export default function PracticeFloorPage() {
           )}
         </div>
     </div>
+    </RoleGate>
   );
 }

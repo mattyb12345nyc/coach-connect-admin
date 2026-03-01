@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { RoleGate } from '@/components/admin/RoleGate';
 
 type TableName = 'focus_cards' | 'cultural_moments' | 'whats_new';
 
@@ -539,6 +540,7 @@ export default function TodayDashboardPage() {
   }
 
   return (
+    <RoleGate minRole="manager">
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
           <div className="mb-8">
@@ -709,5 +711,6 @@ export default function TodayDashboardPage() {
           </div>
         </div>
     </div>
+    </RoleGate>
   );
 }

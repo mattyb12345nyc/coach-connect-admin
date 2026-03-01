@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { RoleGate } from '@/components/admin/RoleGate';
 
 interface AppUser {
   id: string;
@@ -251,6 +252,7 @@ export default function UsersPage() {
   };
 
   return (
+    <RoleGate minRole="manager">
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex items-center justify-between mb-8">
@@ -683,5 +685,6 @@ export default function UsersPage() {
           )}
         </div>
     </div>
+    </RoleGate>
   );
 }
