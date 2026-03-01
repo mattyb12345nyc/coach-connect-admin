@@ -16,6 +16,7 @@ import {
   Store,
   Shield,
   Loader2,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminAuthProvider, useAdminAuth, type AdminRole } from '@/contexts/AdminAuthContext';
@@ -36,6 +37,7 @@ const navItems: NavItem[] = [
   { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture', minRole: 'manager' },
   { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'manager' },
   { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'manager' },
+  { id: 'invitations', label: 'Invitations', icon: Mail, href: '/admin/invitations', minRole: 'manager' },
 ];
 
 const ROLE_LEVEL: Record<AdminRole, number> = {
