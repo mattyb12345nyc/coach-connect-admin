@@ -93,6 +93,28 @@ export default function UsersPage() {
   const [addForm, setAddForm] = useState(EMPTY_USER);
   const [saving, setSaving] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [storesList, setStoresList] = useState<{ id: string; store_number: string; store_name: string; city: string; state: string; status: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/admin/stores?status=OPEN')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setStoresList(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const handleStoreSelect = (storeNumber: string, setter: (fn: (prev: any) => any) => void) => {
+    const selected = storesList.find(s => s.store_number === storeNumber);
+    if (selected) {
+      setter((prev: any) => ({
+        ...prev,
+        store: selected.store_name,
+        store_number: selected.store_number,
+        city: `${selected.city}, ${selected.state}`,
+      }));
+    } else {
+      setter((prev: any) => ({ ...prev, store: '', store_number: '', city: '' }));
+    }
+  };
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -356,29 +378,20 @@ export default function UsersPage() {
                     onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label weight="semibold">Store</Label>
-                  <Input
-                    value={addForm.store}
-                    onChange={e => setAddForm(f => ({ ...f, store: e.target.value }))}
-                    placeholder="Fifth Avenue"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label weight="semibold">Store Number</Label>
-                  <Input
+                  <select
                     value={addForm.store_number}
-                    onChange={e => setAddForm(f => ({ ...f, store_number: e.target.value }))}
-                    placeholder="001"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label weight="semibold">City</Label>
-                  <Input
-                    value={addForm.city}
-                    onChange={e => setAddForm(f => ({ ...f, city: e.target.value }))}
-                    placeholder="New York"
-                  />
+                    onChange={e => handleStoreSelect(e.target.value, setAddForm)}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+                  >
+                    <option value="">Select a store...</option>
+                    {storesList.map(s => (
+                      <option key={s.store_number} value={s.store_number}>
+                        #{s.store_number} — {s.store_name} ({s.city}, {s.state})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-1.5">
                   <Label weight="semibold">Role</Label>
@@ -602,26 +615,20 @@ export default function UsersPage() {
                               onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
                             />
                           </div>
-                          <div className="space-y-1.5">
+                          <div className="space-y-1.5 sm:col-span-2">
                             <Label weight="semibold">Store</Label>
-                            <Input
-                              value={editForm.store ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, store: e.target.value }))}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label weight="semibold">Store Number</Label>
-                            <Input
+                            <select
                               value={editForm.store_number ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, store_number: e.target.value }))}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label weight="semibold">City</Label>
-                            <Input
-                              value={editForm.city ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
-                            />
+                              onChange={e => handleStoreSelect(e.target.value, setEditForm)}
+                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+                            >
+                              <option value="">Select a store...</option>
+                              {storesList.map(s => (
+                                <option key={s.store_number} value={s.store_number}>
+                                  #{s.store_number} — {s.store_name} ({s.city}, {s.state})
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           <div className="space-y-1.5">
                             <Label weight="semibold">Role</Label>

@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { id: 'community', label: 'Community', icon: Users, href: '/admin/community' },
   { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture' },
   { id: 'users', label: 'Users', icon: User, href: '/admin/users' },
+  { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
