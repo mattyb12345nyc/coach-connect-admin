@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -52,7 +52,19 @@ interface StoreOption {
 
 type PageState = 'loading' | 'form' | 'invalid' | 'expired' | 'success';
 
-export default function RegisterPage() {
+export default function RegisterPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-gray-200 border-t-amber-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <RegisterPage />
+    </Suspense>
+  );
+}
+
+function RegisterPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
