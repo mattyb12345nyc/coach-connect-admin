@@ -24,6 +24,7 @@ import {
   ImagePlus,
   Ban,
   Search,
+  ZoomIn,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -549,6 +550,7 @@ function TrendWizardModal({
   const [scopeStoreId, setScopeStoreId] = useState('');
   const [scopeRegion, setScopeRegion] = useState('');
   const [phase, setPhase] = useState<'wizard' | 'review'>('wizard');
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -824,7 +826,7 @@ function TrendWizardModal({
                           className="rounded-lg h-8 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
                           {bulkRejecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
-                          Reject Selected
+                          Delete Selected
                         </Button>
                         <Button
                           size="sm"
@@ -888,9 +890,18 @@ function TrendWizardModal({
                               <h4 className="text-sm font-semibold text-gray-900 mb-1">{candidate.title}</h4>
                               <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{candidate.description}</p>
                             </div>
-                            <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                            <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden relative group/thumb">
                               {candidate.image_url ? (
-                                <img src={candidate.image_url} alt={candidate.title} className="w-full h-full object-cover" />
+                                <>
+                                  <img src={candidate.image_url} alt={candidate.title} className="w-full h-full object-cover" />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setPreviewImage({ url: candidate.image_url!, title: candidate.title }); }}
+                                    className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-all"
+                                  >
+                                    <ZoomIn className="w-5 h-5 text-white drop-shadow" />
+                                  </button>
+                                </>
                               ) : isImageBusy ? (
                                 <div className="flex flex-col items-center gap-1">
                                   <Loader2 className="w-5 h-5 animate-spin text-coach-gold" />
@@ -944,6 +955,26 @@ function TrendWizardModal({
             </div>
           )}
         </div>
+
+        {/* Image Preview Lightbox */}
+        {previewImage && (
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setPreviewImage(null)}>
+            <div className="relative max-w-full max-h-full flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={previewImage.url}
+                alt={previewImage.title}
+                className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain"
+              />
+              <p className="text-sm text-white/80 font-medium text-center max-w-md truncate">{previewImage.title}</p>
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         {phase === 'wizard' && (
