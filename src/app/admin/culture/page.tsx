@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Sparkles,
   Plus,
@@ -56,6 +56,8 @@ interface CultureItem {
   store_id?: string | null;
 }
 
+type ImageStatus = 'none' | 'pending' | 'processing' | 'completed' | 'failed';
+
 interface TrendCandidate {
   id: string;
   type: CultureType;
@@ -70,6 +72,8 @@ interface TrendCandidate {
   status: 'generated' | 'approved' | 'rejected';
   created_at: string;
   image_prompt?: string | null;
+  image_status?: ImageStatus;
+  image_error?: string | null;
 }
 
 interface StoreSummary {
@@ -784,9 +788,17 @@ function TrendWizardModal({
                   {/* Image generation toolbar */}
                   <div className="mb-5 p-4 rounded-2xl bg-gray-50 border border-gray-100">
                     <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-semibold text-gray-700">
-                        {selectedCandidateIds.length} of {candidates.length} selected
-                      </p>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700">
+                          {selectedCandidateIds.length} of {candidates.length} selected
+                        </p>
+                        {candidates.some((c) => c.image_status === 'pending' || c.image_status === 'processing') && (
+                          <p className="text-xs text-coach-gold mt-0.5 flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Generating images in background...
+                          </p>
+                        )}
+                      </div>
                       <Button
                         size="sm"
                         onClick={onGenerateImages}
@@ -824,6 +836,8 @@ function TrendWizardModal({
                     {candidates.map((candidate) => {
                       const isSelected = selectedCandidateIds.includes(candidate.id);
                       const isProcessing = processingCandidateId === candidate.id;
+                      const imgStatus = candidate.image_status || 'none';
+                      const isImageBusy = imgStatus === 'pending' || imgStatus === 'processing';
                       return (
                         <div
                           key={candidate.id}
@@ -854,12 +868,23 @@ function TrendWizardModal({
                               <h4 className="text-sm font-semibold text-gray-900 mb-1">{candidate.title}</h4>
                               <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{candidate.description}</p>
                             </div>
-                            {candidate.image_url && (
-                              <div
-                                className="w-20 h-20 rounded-xl bg-gray-100 bg-cover bg-center flex-shrink-0"
-                                style={{ backgroundImage: `url(${candidate.image_url})` }}
-                              />
-                            )}
+                            <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                              {candidate.image_url ? (
+                                <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${candidate.image_url})` }} />
+                              ) : isImageBusy ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  <Loader2 className="w-5 h-5 animate-spin text-coach-gold" />
+                                  <span className="text-[9px] text-gray-400">{imgStatus === 'processing' ? 'Creating...' : 'Queued'}</span>
+                                </div>
+                              ) : imgStatus === 'failed' ? (
+                                <div className="flex flex-col items-center gap-1 px-1">
+                                  <Ban className="w-4 h-4 text-red-400" />
+                                  <span className="text-[9px] text-red-400 text-center leading-tight">Failed</span>
+                                </div>
+                              ) : (
+                                <Image className="w-6 h-6 text-gray-300" />
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2 px-4 pb-3 pl-13">
                             <Button
@@ -881,8 +906,13 @@ function TrendWizardModal({
                               <Ban className="w-3.5 h-3.5 mr-1" />
                               Reject
                             </Button>
-                            {!candidate.image_url && (
+                            {!candidate.image_url && !isImageBusy && imgStatus !== 'failed' && (
                               <span className="text-[11px] text-amber-600 ml-auto">Needs image first</span>
+                            )}
+                            {imgStatus === 'failed' && candidate.image_error && (
+                              <span className="text-[11px] text-red-500 ml-auto truncate max-w-[200px]" title={candidate.image_error}>
+                                {candidate.image_error}
+                              </span>
                             )}
                           </div>
                         </div>
@@ -977,6 +1007,8 @@ export default function CultureFeedPage() {
   const [imageCount, setImageCount] = useState(1);
   const [realWorldAccuracy, setRealWorldAccuracy] = useState(false);
   const [upscale4k, setUpscale4k] = useState(false);
+  const [pollingIds, setPollingIds] = useState<string[]>([]);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const adminHeaders = useMemo<Record<string, string>>(
     () => (user?.email ? { 'x-admin-email': user.email } : ({} as Record<string, string>)),
@@ -1107,20 +1139,82 @@ export default function CultureFeedPage() {
     if (!selectedCandidateIds.length) { toast.error('Select at least one trend to generate images'); return; }
     try {
       setGeneratingImages(true);
-      const res = await fetch('/api/admin/culture/trends/images', { method: 'POST', headers: { 'Content-Type': 'application/json', ...adminHeaders }, body: JSON.stringify({ candidateIds: selectedCandidateIds, numberOfImages: imageCount, realWorldAccuracy, enableSearchGrounding: realWorldAccuracy, upscale4k }) });
+      setCandidates((prev) => prev.map((c) =>
+        selectedCandidateIds.includes(c.id) && !c.image_url
+          ? { ...c, image_status: 'pending' as ImageStatus }
+          : c
+      ));
+
+      const res = await fetch('/api/admin/culture/trends/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        body: JSON.stringify({ candidateIds: selectedCandidateIds, numberOfImages: imageCount, realWorldAccuracy, enableSearchGrounding: realWorldAccuracy, upscale4k }),
+      });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) { const detail = payload?.diagnostics ? ` (${payload.diagnostics})` : ''; throw new Error((payload.error || 'Image generation failed') + detail); }
-      const updated = Array.isArray(payload?.candidates) ? payload.candidates : [];
-      if (updated.length > 0) setCandidates((prev) => prev.map((c) => updated.find((u: TrendCandidate) => u.id === c.id) || c));
-      const gen = Number(payload?.generatedCount || 0);
-      const fail = Number(payload?.failedCount || 0);
-      const total = Number(payload?.totalImagesGenerated || gen);
-      const diag = payload?.diagnostics ? ` (${payload.diagnostics})` : '';
-      toast.success(fail > 0 ? `Generated ${total} image(s) across ${gen} trend(s), ${fail} failed${diag}` : `Generated ${total} image(s)${diag}`);
+      if (!res.ok) throw new Error(payload.error || 'Image generation failed');
+
+      const queued = Number(payload?.queued || 0);
+      const completed = Number(payload?.completed || 0);
+      const idsToTrack = payload?.candidateIds || selectedCandidateIds;
+
+      if (completed > 0) toast.success(`${completed} image(s) completed`);
+      if (queued > 0) toast.info(`${queued} image(s) generating in background...`);
+
+      setPollingIds(idsToTrack);
       await fetchCandidates();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Image generation failed'); }
-    finally { setGeneratingImages(false); }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Image generation failed');
+      setCandidates((prev) => prev.map((c) =>
+        selectedCandidateIds.includes(c.id) && c.image_status === 'pending'
+          ? { ...c, image_status: 'failed' as ImageStatus, image_error: 'Request failed' }
+          : c
+      ));
+    } finally {
+      setGeneratingImages(false);
+    }
   };
+
+  useEffect(() => {
+    if (pollingIds.length === 0) return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/admin/culture/trends/images/status?ids=${pollingIds.join(',')}`);
+        if (!res.ok) return;
+        const { candidates: statusList } = await res.json();
+        if (!Array.isArray(statusList)) return;
+
+        setCandidates((prev) => prev.map((c) => {
+          const update = statusList.find((s: { id: string }) => s.id === c.id);
+          if (!update) return c;
+          return { ...c, image_url: update.image_url ?? c.image_url, image_status: update.image_status, image_error: update.image_error };
+        }));
+
+        const stillBusy = statusList.filter(
+          (s: { image_status: string }) => s.image_status === 'pending' || s.image_status === 'processing'
+        );
+        if (stillBusy.length === 0) {
+          setPollingIds([]);
+          const completed = statusList.filter((s: { image_status: string }) => s.image_status === 'completed').length;
+          const failed = statusList.filter((s: { image_status: string }) => s.image_status === 'failed').length;
+          if (completed > 0 || failed > 0) {
+            toast.success(`Images done: ${completed} completed${failed > 0 ? `, ${failed} failed` : ''}`);
+          }
+          return;
+        }
+
+        pollTimerRef.current = setTimeout(poll, 3000);
+      } catch {
+        pollTimerRef.current = setTimeout(poll, 5000);
+      }
+    };
+
+    pollTimerRef.current = setTimeout(poll, 2000);
+
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, [pollingIds]);
 
   // ─── Render ───
 

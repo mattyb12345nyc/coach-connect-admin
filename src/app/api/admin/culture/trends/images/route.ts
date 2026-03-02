@@ -5,7 +5,16 @@ import { generateCandidateImagesDetailed } from '@/lib/trend-engine';
 
 export const dynamic = 'force-dynamic';
 
+const ROUTE_TIME_BUDGET_MS = 20_000;
+
+function getBaseUrl(request: NextRequest): string {
+  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  const host = request.headers.get('host') || 'localhost:3000';
+  return `${proto}://${host}`;
+}
+
 export async function POST(request: NextRequest) {
+  const routeStart = Date.now();
   try {
     const context = await getRequestAdminContext(request);
     const supabase = getAdminClient();
@@ -16,10 +25,6 @@ export async function POST(request: NextRequest) {
       realWorldAccuracy,
       upscale4k,
     } = await request.json();
-    const requestedImageCount = Math.max(1, Math.min(4, Number(numberOfImages) || 1));
-    // We currently persist a single image URL per candidate, so generating more than one
-    // image per candidate adds latency without improving publish output.
-    const persistedImageCountPerCandidate = 1;
 
     if (!Array.isArray(candidateIds) || candidateIds.length === 0) {
       return NextResponse.json({ error: 'candidateIds must be a non-empty array' }, { status: 400 });
@@ -43,75 +48,93 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const updates = await Promise.all(
-      candidates.map(async (candidate) => {
-        const detailedResult =
-          candidate.image_url
-            ? { images: [candidate.image_url], diagnostics: 'existing image reused' }
-            : await generateCandidateImagesDetailed(candidate.image_prompt || candidate.title, {
-                numberOfImages: persistedImageCountPerCandidate,
-                enableSearchGrounding: Boolean(enableSearchGrounding),
-                realWorldAccuracy: Boolean(realWorldAccuracy),
-                upscale4k: Boolean(upscale4k),
-              });
-        const imageUrl = detailedResult.images[0] || null;
-        const { data, error } = await supabase
+    const imageOptions = {
+      numberOfImages: 1,
+      enableSearchGrounding: Boolean(enableSearchGrounding),
+      realWorldAccuracy: Boolean(realWorldAccuracy),
+      upscale4k: Boolean(upscale4k),
+    };
+
+    const toProcess = candidates.filter((c) => !c.image_url);
+    const alreadyDone = candidates.filter((c) => !!c.image_url);
+
+    if (alreadyDone.length > 0) {
+      await supabase
+        .from('culture_trend_candidates')
+        .update({ image_status: 'completed' })
+        .in('id', alreadyDone.map((c) => c.id));
+    }
+
+    if (toProcess.length === 0) {
+      return NextResponse.json({
+        queued: 0,
+        completed: alreadyDone.length,
+        candidateIds: candidates.map((c) => c.id),
+      });
+    }
+
+    await supabase
+      .from('culture_trend_candidates')
+      .update({ image_status: 'pending', image_error: null, image_requested_at: new Date().toISOString() })
+      .in('id', toProcess.map((c) => c.id));
+
+    let completedInline = 0;
+    for (const candidate of toProcess) {
+      const elapsed = Date.now() - routeStart;
+      if (elapsed > ROUTE_TIME_BUDGET_MS) break;
+
+      await supabase
+        .from('culture_trend_candidates')
+        .update({ image_status: 'processing' })
+        .eq('id', candidate.id);
+
+      try {
+        const result = await generateCandidateImagesDetailed(
+          candidate.image_prompt || candidate.title,
+          imageOptions
+        );
+        const imageUrl = result.images[0] || null;
+        await supabase
           .from('culture_trend_candidates')
-          .update({ image_url: imageUrl })
-          .eq('id', candidate.id)
-          .select('id')
-          .single();
-        if (error) throw error;
-        return {
-          ...data,
-          generated_image_count: detailedResult.images.length,
-          image_diagnostics: detailedResult.diagnostics,
-        };
-      })
-    );
+          .update({
+            image_url: imageUrl,
+            image_status: imageUrl ? 'completed' : 'failed',
+            image_error: imageUrl ? null : (result.diagnostics || 'No image returned'),
+          })
+          .eq('id', candidate.id);
+        if (imageUrl) completedInline++;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Image generation failed';
+        await supabase
+          .from('culture_trend_candidates')
+          .update({ image_status: 'failed', image_error: msg })
+          .eq('id', candidate.id);
+      }
+    }
 
-    const generatedCount = updates.filter((candidate) => Number(candidate.generated_image_count || 0) > 0).length;
-    const failedCount = updates.length - generatedCount;
-    const totalImagesGenerated = updates.reduce(
-      (sum, candidate) => sum + Number(candidate.generated_image_count || 0),
-      0
-    );
+    const { count: remainingCount } = await supabase
+      .from('culture_trend_candidates')
+      .select('id', { count: 'exact', head: true })
+      .in('id', toProcess.map((c) => c.id))
+      .in('image_status', ['pending']);
 
-    const baseDiagnostics = updates
-      .map((candidate) => candidate.image_diagnostics)
-      .filter(Boolean)
-      .slice(0, 3)
-      .join(' | ');
-    const countDiagnostic =
-      requestedImageCount > persistedImageCountPerCandidate
-        ? `Requested ${requestedImageCount} image(s) per trend; generated ${persistedImageCountPerCandidate} per trend for faster completion`
-        : '';
-    const diagnostics = [countDiagnostic, baseDiagnostics].filter(Boolean).join(' | ');
-
-    if (generatedCount === 0) {
-      return NextResponse.json(
-        {
-          error: 'Image provider returned no images for the selected trends',
-          candidates: [],
-          updatedCandidateIds: updates.map((candidate) => candidate.id),
-          generatedCount,
-          failedCount,
-          totalImagesGenerated,
-          diagnostics,
-        },
-        { status: 422 }
-      );
+    if (remainingCount && remainingCount > 0) {
+      const baseUrl = getBaseUrl(request);
+      const processSecret = process.env.IMAGE_PROCESS_SECRET || 'internal';
+      fetch(`${baseUrl}/api/admin/culture/trends/images/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-process-secret': processSecret },
+        body: JSON.stringify({ imageOptions }),
+      }).catch(() => {});
     }
 
     return NextResponse.json({
-      candidates: [],
-      updatedCandidateIds: updates.map((candidate) => candidate.id),
-      generatedCount,
-      failedCount,
-      totalImagesGenerated,
-      diagnostics,
+      queued: (remainingCount || 0),
+      completed: alreadyDone.length + completedInline,
+      candidateIds: candidates.map((c) => c.id),
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Image generation failed' }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Image generation failed';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

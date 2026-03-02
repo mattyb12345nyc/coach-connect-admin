@@ -36,6 +36,7 @@ export interface GeminiImageOptions {
 
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+const GEMINI_TIMEOUT_MS = 15_000;
 
 function getPerplexityApiKey() {
   const key = process.env.PERPLEXITY_API_KEY;
@@ -178,26 +179,37 @@ async function generateImagesWithGemini(
   const textParts: string[] = [];
 
   for (let i = 0; i < numberOfImages; i += 1) {
-    const response = await fetch(
-      `${GEMINI_API_BASE}/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: enhancedPrompt }] }],
-          generationConfig: {
-            responseModalities: ['IMAGE'],
-            imageConfig: {
-              aspectRatio,
-              imageSize,
+    let response: Response;
+    try {
+      response = await fetch(
+        `${GEMINI_API_BASE}/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: enhancedPrompt }] }],
+            generationConfig: {
+              responseModalities: ['IMAGE'],
+              imageConfig: {
+                aspectRatio,
+                imageSize,
+              },
+              thinkingConfig: {
+                thinkingLevel,
+              },
             },
-            thinkingConfig: {
-              thinkingLevel,
-            },
-          },
-        }),
-      }
-    );
+          }),
+        }
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown fetch error';
+      return {
+        images,
+        textParts: [...textParts, `Primary Gemini request timed out or failed (${msg})`],
+        attemptLabel: 'gemini-3.1-looped',
+      };
+    }
 
     if (!response.ok) {
       const errorDetail = await parseErrorText(response);
@@ -239,19 +251,30 @@ async function generateImagesWithGeminiFallback(
   const textParts: string[] = [];
 
   for (let i = 0; i < numberOfImages; i += 1) {
-    const response = await fetch(
-      `${GEMINI_API_BASE}/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: enhancedPrompt }] }],
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE'],
-          },
-        }),
-      }
-    );
+    let response: Response;
+    try {
+      response = await fetch(
+        `${GEMINI_API_BASE}/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: enhancedPrompt }] }],
+            generationConfig: {
+              responseModalities: ['TEXT', 'IMAGE'],
+            },
+          }),
+        }
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown fetch error';
+      return {
+        images,
+        textParts: [...textParts, `Fallback Gemini request timed out or failed (${msg})`],
+        attemptLabel: 'gemini-2.0-looped',
+      };
+    }
 
     if (!response.ok) {
       const errorDetail = await parseErrorText(response);
