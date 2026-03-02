@@ -6,16 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Mail,
-  Plus,
-  Copy,
-  Trash2,
-  Loader2,
-  Check,
-  Clock,
-  UserPlus,
-  Shield,
-  X,
+  Mail, Plus, Copy, Trash2, Loader2, Check, Clock, UserPlus, Shield, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -33,11 +24,13 @@ interface StoreOption {
 interface Invitation {
   id: string;
   email: string;
-  role: 'manager' | 'associate';
+  first_name: string | null;
+  last_name: string | null;
+  role: string;
   store_id: string;
   invited_by: string;
   token: string;
-  status: 'pending' | 'accepted' | 'expired';
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
   created_at: string;
   expires_at: string;
   accepted_at: string | null;
@@ -46,10 +39,17 @@ interface Invitation {
     store_name: string;
     city: string;
     state: string;
-  };
+  } | null;
 }
 
-type TabFilter = 'all' | 'pending' | 'accepted' | 'expired';
+type TabFilter = 'all' | 'pending' | 'accepted' | 'expired' | 'revoked';
+
+const ROLE_OPTIONS = [
+  { value: 'associate', label: 'Associate' },
+  { value: 'store_manager', label: 'Store Manager' },
+  { value: 'regional_manager', label: 'Regional Manager' },
+  { value: 'admin', label: 'Admin' },
+];
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
@@ -72,7 +72,9 @@ export default function InvitationsPage() {
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
 
   const [email, setEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'manager' | 'associate'>('associate');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [inviteRole, setInviteRole] = useState('associate');
   const [selectedStoreId, setSelectedStoreId] = useState('');
 
   const [successResult, setSuccessResult] = useState<{
@@ -130,7 +132,7 @@ export default function InvitationsPage() {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !selectedStoreId) {
-      toast.error('Please fill in all fields');
+      toast.error('Please fill in email and store');
       return;
     }
 
@@ -142,9 +144,11 @@ export default function InvitationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
+          first_name: firstName || undefined,
+          last_name: lastName || undefined,
           role: inviteRole,
           store_id: selectedStoreId,
-          invited_by: user?.email ?? 'admin',
+          invited_by: user?.id ?? user?.email ?? 'admin',
         }),
       });
       if (!res.ok) {
@@ -157,6 +161,8 @@ export default function InvitationsPage() {
         email_sent: data.email_sent,
       });
       setEmail('');
+      setFirstName('');
+      setLastName('');
       fetchInvitations();
       toast.success('Invitation sent');
     } catch (e) {
@@ -176,7 +182,7 @@ export default function InvitationsPage() {
       });
       if (!res.ok) throw new Error('Failed to revoke invitation');
       setInvitations(prev => prev.map(i =>
-        i.id === id ? { ...i, status: 'expired' as const } : i
+        i.id === id ? { ...i, status: 'revoked' as const } : i
       ));
       toast.success('Invitation revoked');
     } catch {
@@ -187,7 +193,7 @@ export default function InvitationsPage() {
   };
 
   const copyInviteLink = async (invitation: Invitation) => {
-    const url = `${window.location.origin}/invite/${invitation.token}`;
+    const url = `https://coach-connect-demo.netlify.app/invite?token=${invitation.token}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(invitation.id);
@@ -203,6 +209,7 @@ export default function InvitationsPage() {
     { key: 'pending', label: 'Pending' },
     { key: 'accepted', label: 'Accepted' },
     { key: 'expired', label: 'Expired' },
+    { key: 'revoked', label: 'Revoked' },
   ];
 
   return (
@@ -214,7 +221,7 @@ export default function InvitationsPage() {
               <Mail className="h-6 w-6 text-coach-mahogany" />
               <h1 className="text-2xl font-bold text-coach-black tracking-tight">Invitations</h1>
             </div>
-            <p className="text-sm text-gray-500">Invite managers and associates to Coach Connect</p>
+            <p className="text-sm text-gray-500">Invite team members to Coach Connect</p>
           </div>
 
           <Card className="p-6 mb-6">
@@ -224,9 +231,9 @@ export default function InvitationsPage() {
                 <h2 className="text-base font-semibold text-coach-black">Send Invitation</h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-1.5">
-                  <Label size="xs" weight="semibold">Email</Label>
+                  <Label size="xs" weight="semibold">Email *</Label>
                   <Input
                     type="email"
                     placeholder="user@example.com"
@@ -237,19 +244,42 @@ export default function InvitationsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label size="xs" weight="semibold">Role</Label>
-                  <select
-                    value={inviteRole}
-                    onChange={e => setInviteRole(e.target.value as 'manager' | 'associate')}
-                    className="w-full h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
-                  >
-                    {isAdmin && <option value="manager">Manager</option>}
-                    <option value="associate">Associate</option>
-                  </select>
+                  <Label size="xs" weight="semibold">First Name</Label>
+                  <Input
+                    type="text"
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                  />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label size="xs" weight="semibold">Store</Label>
+                  <Label size="xs" weight="semibold">Last Name</Label>
+                  <Input
+                    type="text"
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label size="xs" weight="semibold">Role</Label>
+                  <select
+                    value={inviteRole}
+                    onChange={e => setInviteRole(e.target.value)}
+                    className="w-full h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+                  >
+                    {ROLE_OPTIONS.filter(r => isAdmin || r.value === 'associate').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label size="xs" weight="semibold">Store *</Label>
                   <select
                     value={selectedStoreId}
                     onChange={e => setSelectedStoreId(e.target.value)}
@@ -402,22 +432,31 @@ export default function InvitationsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2.5 flex-wrap">
                           <p className="text-sm font-semibold text-coach-black truncate">
-                            {invitation.email}
+                            {invitation.first_name || invitation.last_name
+                              ? `${invitation.first_name || ''} ${invitation.last_name || ''}`.trim()
+                              : invitation.email}
                           </p>
+                          {(invitation.first_name || invitation.last_name) && (
+                            <span className="text-xs text-gray-400 truncate">{invitation.email}</span>
+                          )}
                           <span className={cn(
                             'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium',
-                            invitation.role === 'manager'
-                              ? 'bg-blue-50 text-blue-700'
-                              : 'bg-gray-100 text-gray-600'
+                            invitation.role === 'admin' || invitation.role === 'regional_manager'
+                              ? 'bg-purple-50 text-purple-700'
+                              : invitation.role === 'store_manager'
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-gray-100 text-gray-600'
                           )}>
-                            {invitation.role === 'manager' && <Shield className="h-3 w-3" />}
-                            {invitation.role}
+                            {(invitation.role === 'store_manager' || invitation.role === 'admin' || invitation.role === 'regional_manager') && (
+                              <Shield className="h-3 w-3" />
+                            )}
+                            {invitation.role.replace('_', ' ')}
                           </span>
                           <span className={cn(
                             'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
                             invitation.status === 'pending' && 'bg-amber-50 text-amber-700',
                             invitation.status === 'accepted' && 'bg-emerald-50 text-emerald-700',
-                            invitation.status === 'expired' && 'bg-gray-100 text-gray-500'
+                            (invitation.status === 'expired' || invitation.status === 'revoked') && 'bg-gray-100 text-gray-500'
                           )}>
                             {invitation.status}
                           </span>

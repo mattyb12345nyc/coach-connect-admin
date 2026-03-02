@@ -29,7 +29,7 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
-  minRole: 'manager' | 'admin';
+  minRole: 'store_manager' | 'admin';
   children?: NavItem[];
 }
 
@@ -42,40 +42,44 @@ const navSections: NavSection[] = [
   {
     label: 'App Content',
     items: [
-      { id: 'today', label: 'Today Dashboard', icon: LayoutDashboard, href: '/admin/today', minRole: 'manager' },
+      { id: 'today', label: 'Today Dashboard', icon: LayoutDashboard, href: '/admin/today', minRole: 'store_manager' },
       {
         id: 'chat-group', label: 'Coach Chat', icon: MessageSquare, href: '/admin/chat', minRole: 'admin',
         children: [
-          { id: 'chat-history', label: 'Chat History', icon: History, href: '/admin/chat-history', minRole: 'manager' },
+          { id: 'chat-history', label: 'Chat History', icon: History, href: '/admin/chat-history', minRole: 'store_manager' },
         ],
       },
-      { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice', minRole: 'manager' },
-      { id: 'community', label: 'Community', icon: Users, href: '/admin/community', minRole: 'manager' },
-      { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture', minRole: 'manager' },
-      { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'manager' },
-      { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'manager' },
-      { id: 'invitations', label: 'Invitations', icon: Mail, href: '/admin/invitations', minRole: 'manager' },
+      { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice', minRole: 'store_manager' },
+      { id: 'community', label: 'Community', icon: Users, href: '/admin/community', minRole: 'store_manager' },
+      { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture', minRole: 'store_manager' },
+      { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'store_manager' },
+      { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'store_manager' },
+      { id: 'invitations', label: 'Invitations', icon: Mail, href: '/admin/invitations', minRole: 'store_manager' },
     ],
   },
   {
     label: 'Account',
     items: [
-      { id: 'profile', label: 'Profile', icon: UserCircle, href: '/admin/profile', minRole: 'manager' },
-      { id: 'settings', label: 'Settings', icon: Settings, href: '/admin/settings', minRole: 'manager' },
+      { id: 'profile', label: 'Profile', icon: UserCircle, href: '/admin/profile', minRole: 'store_manager' },
+      { id: 'settings', label: 'Settings', icon: Settings, href: '/admin/settings', minRole: 'store_manager' },
     ],
   },
 ];
 
 const ROLE_LEVEL: Record<AdminRole, number> = {
   associate: 0,
-  manager: 1,
-  admin: 2,
+  store_manager: 1,
+  regional_manager: 2,
+  admin: 3,
+  super_admin: 4,
 };
 
 const ROLE_BADGE: Record<AdminRole, { label: string; className: string }> = {
   associate: { label: 'Associate', className: 'bg-gray-100 text-gray-600' },
-  manager: { label: 'Manager', className: 'bg-blue-100 text-blue-700' },
+  store_manager: { label: 'Store Manager', className: 'bg-blue-100 text-blue-700' },
+  regional_manager: { label: 'Regional Manager', className: 'bg-indigo-100 text-indigo-700' },
   admin: { label: 'Admin', className: 'bg-purple-100 text-purple-700' },
+  super_admin: { label: 'Super Admin', className: 'bg-amber-100 text-amber-700' },
 };
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
@@ -127,7 +131,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (ROLE_LEVEL[role] < ROLE_LEVEL['manager']) {
+  if (ROLE_LEVEL[role] < ROLE_LEVEL['store_manager']) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 text-center">
         <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
@@ -172,7 +176,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-3">
             {user && (
               <div className="hidden sm:flex items-center gap-2">
-                <span className="text-sm text-gray-600">{user.name}</span>
+                <span className="text-sm text-gray-600">{user.display_name}</span>
                 <span className={cn('text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full', badge.className)}>
                   {badge.label}
                 </span>
@@ -309,8 +313,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           {user && (
             <div className="p-3 border-t border-gray-100">
               <div className="px-3 py-2">
-                <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                <p className="text-xs text-gray-500 truncate">{user.store || user.email}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">{user.display_name}</p>
+                <p className="text-xs text-gray-500 truncate">{user.store_name || user.email}</p>
                 <span className={cn('inline-block mt-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full', badge.className)}>
                   {badge.label}
                 </span>

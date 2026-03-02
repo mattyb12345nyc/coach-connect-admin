@@ -4,16 +4,21 @@ import React from 'react';
 import { useAdminAuth, type AdminRole } from '@/contexts/AdminAuthContext';
 import { ShieldAlert, Loader2, Eye } from 'lucide-react';
 
+type MinRole = 'associate' | 'store_manager' | 'manager' | 'regional_manager' | 'admin' | 'super_admin';
+
 interface RoleGateProps {
-  minRole: 'manager' | 'admin';
+  minRole: MinRole;
   readOnlyFor?: AdminRole[];
   children: React.ReactNode | ((props: { readOnly: boolean; storeId: string | null }) => React.ReactNode);
 }
 
-const ROLE_LEVEL: Record<AdminRole, number> = {
+const ROLE_LEVEL: Record<string, number> = {
   associate: 0,
-  manager: 1,
-  admin: 2,
+  store_manager: 1,
+  manager: 1, // backwards compat alias
+  regional_manager: 2,
+  admin: 3,
+  super_admin: 4,
 };
 
 export function RoleGate({ minRole, readOnlyFor = [], children }: RoleGateProps) {
@@ -27,7 +32,7 @@ export function RoleGate({ minRole, readOnlyFor = [], children }: RoleGateProps)
     );
   }
 
-  if (ROLE_LEVEL[role] < ROLE_LEVEL[minRole]) {
+  if ((ROLE_LEVEL[role] ?? 0) < (ROLE_LEVEL[minRole] ?? 0)) {
     return (
       <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
         <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
@@ -35,7 +40,7 @@ export function RoleGate({ minRole, readOnlyFor = [], children }: RoleGateProps)
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Restricted</h2>
         <p className="text-gray-500 max-w-md">
-          This section requires {minRole} privileges. Contact your administrator if you need access.
+          This section requires higher privileges. Contact your administrator if you need access.
         </p>
       </div>
     );

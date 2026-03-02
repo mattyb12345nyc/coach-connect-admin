@@ -31,9 +31,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: permission.reason }, { status: 403 });
     }
 
-    const finalScope: ScopeType = context.role === 'manager' ? 'store' : requestedScope;
-    const finalStoreId = context.role === 'manager' ? context.storeId : requestedStoreId;
-    const finalRegion = context.role === 'manager' ? null : requestedRegion;
+    const finalScope: ScopeType = context.role === 'store_manager' ? 'store' : requestedScope;
+    const finalStoreId = context.role === 'store_manager' ? context.storeId : requestedStoreId;
+    const finalRegion = context.role === 'store_manager' ? null : requestedRegion;
 
     const generated = await generateTrendCandidates({
       ...body.selections,

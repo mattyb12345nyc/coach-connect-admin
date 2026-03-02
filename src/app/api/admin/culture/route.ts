@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     let filtered = data ?? [];
 
-    if (context.role === 'manager') {
+    if (context.role === 'store_manager') {
       let userRegion: string | null = null;
       if (context.storeId) {
         const { data: store } = await supabase
@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
     const context = await getRequestAdminContext(request);
     const supabase = getAdminClient();
     const body = await request.json();
-    const scopeType = context.role === 'manager' ? 'store' : body.scope_type || 'global';
-    const storeId = context.role === 'manager' ? context.storeId : body.store_id || null;
+    const scopeType = context.role === 'store_manager' ? 'store' : body.scope_type || 'global';
+    const storeId = context.role === 'store_manager' ? context.storeId : body.store_id || null;
     const storeRegion =
       scopeType === 'region'
         ? body.store_region || null

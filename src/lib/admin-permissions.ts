@@ -1,10 +1,10 @@
 import { type NextRequest } from 'next/server';
-import { getAdminRole } from '@/lib/admin-auth';
+import { getAdminRole, type AdminRole } from '@/lib/admin-auth';
 
 export type ScopeType = 'global' | 'region' | 'store';
 
 export interface RequestAdminContext {
-  role: 'associate' | 'manager' | 'admin';
+  role: AdminRole;
   storeId: string | null;
   userId: string | null;
 }
@@ -23,9 +23,9 @@ export function canManageScope(
   targetStoreId: string | null,
   targetRegion?: string | null
 ): { allowed: boolean; reason?: string } {
-  if (context.role === 'admin') return { allowed: true };
+  if (context.role === 'admin' || context.role === 'super_admin') return { allowed: true };
 
-  if (context.role === 'manager') {
+  if (context.role === 'store_manager') {
     if (scopeType !== 'store') {
       return { allowed: false, reason: 'Managers can only manage store-scoped posts' };
     }

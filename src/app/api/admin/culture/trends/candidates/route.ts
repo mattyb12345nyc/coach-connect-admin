@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     if (status) query = query.eq('status', status);
 
-    if (context.role === 'manager') {
+    if (context.role === 'store_manager') {
       query = query.eq('scope_type', 'store').eq('store_id', context.storeId);
     }
 

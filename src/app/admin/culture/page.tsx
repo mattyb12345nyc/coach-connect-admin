@@ -585,7 +585,7 @@ function TrendWizardModal({
 
   const canProceedStep1 = topic.trim().length > 0;
   const canGenerate = (() => {
-    if (role === 'manager') return true;
+    if (role === 'store_manager') return true;
     if (scope === 'store' && !scopeStoreId) return false;
     if (scope === 'region' && !scopeRegion) return false;
     return true;
@@ -1154,9 +1154,9 @@ export default function CultureFeedPage() {
   const handleGenerateTrends = async (params: { topic: string; customQuery: string; season: string; region: string; type: CultureType; scope: 'global' | 'region' | 'store'; scopeStoreId: string; scopeRegion: string }) => {
     try {
       setGenerating(true);
-      const effectiveScope = role === 'manager' ? 'store' : params.scope;
-      const effectiveStoreId = role === 'manager' ? storeId : effectiveScope === 'store' ? params.scopeStoreId || null : null;
-      const effectiveRegion = role === 'manager' ? null : effectiveScope === 'region' ? params.scopeRegion || null : null;
+      const effectiveScope = role === 'store_manager' ? 'store' : params.scope;
+      const effectiveStoreId = role === 'store_manager' ? storeId : effectiveScope === 'store' ? params.scopeStoreId || null : null;
+      const effectiveRegion = role === 'store_manager' ? null : effectiveScope === 'region' ? params.scopeRegion || null : null;
 
       if (effectiveScope === 'store' && !effectiveStoreId) { toast.error('Select a store for store-targeted trends'); setGenerating(false); return; }
       if (effectiveScope === 'region' && !effectiveRegion) { toast.error('Select a region for region-targeted trends'); setGenerating(false); return; }
@@ -1328,7 +1328,7 @@ export default function CultureFeedPage() {
   // ─── Render ───
 
   return (
-    <RoleGate minRole="manager" readOnlyFor={['manager']}>
+    <RoleGate minRole="store_manager" readOnlyFor={['store_manager']}>
       <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           {/* Header */}

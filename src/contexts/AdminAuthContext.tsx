@@ -3,16 +3,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabase } from '@/lib/supabase';
 
-export type AdminRole = 'associate' | 'manager' | 'admin';
+export type AdminRole = 'associate' | 'store_manager' | 'regional_manager' | 'admin' | 'super_admin';
 
 interface AdminUser {
   id: string;
   email: string;
-  name: string;
+  first_name: string;
+  last_name: string;
+  display_name: string;
   role: AdminRole;
+  status: string;
   store_id: string | null;
-  store: string | null;
+  store_name: string | null;
   store_number: string | null;
+  avatar_url: string | null;
 }
 
 interface AdminAuthState {
@@ -33,6 +37,14 @@ const AdminAuthContext = createContext<AdminAuthState>({
   isManager: false,
 });
 
+const ROLE_LEVEL: Record<AdminRole, number> = {
+  associate: 0,
+  store_manager: 1,
+  regional_manager: 2,
+  admin: 3,
+  super_admin: 4,
+};
+
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AdminAuthState>({
     user: null,
@@ -44,65 +56,94 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
+    const supabase = getSupabase();
+
     async function loadUser() {
       try {
-        const supabase = getSupabase();
         const { data: { session } } = await supabase.auth.getSession();
 
-        if (!session?.user?.email) {
-          // No auth session -- default to admin in development
-          setState({
-            user: null,
-            role: 'admin',
-            storeId: null,
-            loading: false,
-            isAdmin: true,
-            isManager: false,
-          });
+        if (!session?.user) {
+          setState(prev => ({ ...prev, loading: false }));
           return;
         }
 
-        const { data: appUser } = await supabase
-          .from('app_users')
-          .select('id, email, name, role, store_id, store, store_number')
-          .eq('email', session.user.email)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*, stores(store_name, store_number)')
+          .eq('id', session.user.id)
           .single();
 
-        if (appUser) {
-          const role = appUser.role as AdminRole;
+        if (profile) {
+          const role = profile.role as AdminRole;
+          const roleLevel = ROLE_LEVEL[role] ?? 0;
           setState({
-            user: appUser as AdminUser,
+            user: {
+              id: profile.id,
+              email: profile.email,
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+              display_name: profile.display_name,
+              role,
+              status: profile.status,
+              store_id: profile.store_id,
+              store_name: profile.stores?.store_name ?? null,
+              store_number: profile.stores?.store_number ?? null,
+              avatar_url: profile.avatar_url,
+            },
             role,
-            storeId: appUser.store_id,
+            storeId: profile.store_id,
             loading: false,
-            isAdmin: role === 'admin',
-            isManager: role === 'manager',
+            isAdmin: roleLevel >= ROLE_LEVEL.admin,
+            isManager: roleLevel >= ROLE_LEVEL.store_manager,
           });
         } else {
-          // User exists in Supabase auth but not in app_users -- default to admin
-          setState({
-            user: null,
-            role: 'admin',
-            storeId: null,
-            loading: false,
-            isAdmin: true,
-            isManager: false,
-          });
+          // Fallback: no profile yet — check old app_users table for backwards compat
+          const { data: appUser } = await supabase
+            .from('app_users')
+            .select('id, email, name, role, store_id, store, store_number')
+            .eq('email', session.user.email)
+            .single();
+
+          if (appUser) {
+            const legacyRole = appUser.role as string;
+            const mappedRole: AdminRole = legacyRole === 'admin' ? 'admin' : legacyRole === 'manager' ? 'store_manager' : 'associate';
+            const mappedLevel = ROLE_LEVEL[mappedRole] ?? 0;
+            setState({
+              user: {
+                id: appUser.id,
+                email: appUser.email,
+                first_name: appUser.name?.split(' ')[0] ?? '',
+                last_name: appUser.name?.split(' ').slice(1).join(' ') ?? '',
+                display_name: appUser.name ?? appUser.email,
+                role: mappedRole,
+                status: 'active',
+                store_id: appUser.store_id,
+                store_name: appUser.store,
+                store_number: appUser.store_number,
+                avatar_url: null,
+              },
+              role: mappedRole,
+              storeId: appUser.store_id,
+              loading: false,
+              isAdmin: mappedLevel >= ROLE_LEVEL.admin,
+              isManager: mappedLevel >= ROLE_LEVEL.store_manager,
+            });
+          } else {
+            setState(prev => ({ ...prev, loading: false }));
+          }
         }
       } catch {
-        // Supabase not configured or tables don't exist -- default to admin
-        setState({
-          user: null,
-          role: 'admin',
-          storeId: null,
-          loading: false,
-          isAdmin: true,
-          isManager: false,
-        });
+        setState(prev => ({ ...prev, loading: false }));
       }
     }
 
     loadUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      loadUser();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   return (

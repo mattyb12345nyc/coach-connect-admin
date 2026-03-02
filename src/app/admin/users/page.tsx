@@ -6,95 +6,87 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  User,
-  Users,
-  Plus,
-  Trash2,
-  Save,
-  Loader2,
-  Pencil,
-  X,
-  Search,
-  Store,
-  Award,
-  Flame,
-  Trophy,
-  Mail,
-  Shield,
+  User, Users, Loader2, Pencil, X, Search, Store, Award, Flame, Trophy,
+  Mail, Shield, Save, CheckCircle, XCircle, Clock, UserCheck, Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
 
-interface AppUser {
+interface ProfileUser {
   id: string;
   email: string;
-  name: string;
-  title: string;
-  store: string;
-  store_number: string;
-  city: string;
+  first_name: string;
+  last_name: string;
+  display_name: string;
   avatar_url: string | null;
-  score: number;
-  rank: string;
-  streak: number;
-  sessions_count: number;
-  role: 'associate' | 'manager' | 'admin';
-  is_active: boolean;
-  member_since: string;
+  role: string;
+  status: string;
+  store_id: string | null;
+  job_title: string;
+  phone: string | null;
+  practice_sessions: number;
+  average_score: number;
+  day_streak: number;
+  created_at: string;
+  last_active_at: string | null;
+  stores: {
+    id: string;
+    store_number: string;
+    store_name: string;
+    city: string;
+    state: string;
+    region: string | null;
+  } | null;
 }
 
-type UserRole = '' | 'associate' | 'manager' | 'admin';
+type StatusFilter = 'all' | 'pending' | 'active' | 'suspended' | 'deactivated';
+type RoleFilter = 'all' | 'associate' | 'store_manager' | 'regional_manager' | 'admin' | 'super_admin';
 
-const ROLE_CONFIG: Record<AppUser['role'], { label: string; bg: string; text: string }> = {
+const ROLE_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
   associate: { label: 'Associate', bg: 'bg-gray-100', text: 'text-gray-700' },
-  manager: { label: 'Manager', bg: 'bg-blue-50', text: 'text-blue-700' },
+  store_manager: { label: 'Store Manager', bg: 'bg-blue-50', text: 'text-blue-700' },
+  regional_manager: { label: 'Regional Mgr', bg: 'bg-indigo-50', text: 'text-indigo-700' },
   admin: { label: 'Admin', bg: 'bg-purple-50', text: 'text-purple-700' },
+  super_admin: { label: 'Super Admin', bg: 'bg-rose-50', text: 'text-rose-700' },
 };
 
-const EMPTY_USER: Omit<AppUser, 'id' | 'score' | 'rank' | 'streak' | 'sessions_count' | 'member_since'> = {
-  email: '',
-  name: '',
-  title: 'Sales Associate',
-  store: '',
-  store_number: '',
-  city: '',
-  avatar_url: null,
-  role: 'associate',
-  is_active: true,
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; icon: typeof CheckCircle }> = {
+  pending: { label: 'Pending', bg: 'bg-amber-50', text: 'text-amber-700', icon: Clock },
+  active: { label: 'Active', bg: 'bg-emerald-50', text: 'text-emerald-700', icon: CheckCircle },
+  suspended: { label: 'Suspended', bg: 'bg-red-50', text: 'text-red-700', icon: Ban },
+  deactivated: { label: 'Deactivated', bg: 'bg-gray-100', text: 'text-gray-500', icon: XCircle },
 };
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(w => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+const ROLE_OPTIONS = [
+  { value: 'associate', label: 'Associate' },
+  { value: 'store_manager', label: 'Store Manager' },
+  { value: 'regional_manager', label: 'Regional Manager' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'super_admin', label: 'Super Admin' },
+];
+
+function getInitials(firstName: string, lastName: string): string {
+  return ((firstName?.[0] || '') + (lastName?.[0] || '')).toUpperCase() || '?';
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+    month: 'short', day: 'numeric', year: 'numeric',
   });
 }
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<AppUser[]>([]);
+  const [users, setUsers] = useState<ProfileUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<UserRole>('');
-  const [storeFilter, setStoreFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<AppUser>>({});
-  const [isAdding, setIsAdding] = useState(false);
-  const [addForm, setAddForm] = useState(EMPTY_USER);
+  const [editForm, setEditForm] = useState<Partial<ProfileUser>>({});
   const [saving, setSaving] = useState<string | null>(null);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [storesList, setStoresList] = useState<{ id: string; store_number: string; store_name: string; city: string; state: string; status: string }[]>([]);
+  const [storesList, setStoresList] = useState<{ id: string; store_number: string; store_name: string; city: string; state: string }[]>([]);
 
   useEffect(() => {
     fetch('/api/admin/stores?status=OPEN')
@@ -103,30 +95,16 @@ export default function UsersPage() {
       .catch(() => {});
   }, []);
 
-  const handleStoreSelect = (storeNumber: string, setter: (fn: (prev: any) => any) => void) => {
-    const selected = storesList.find(s => s.store_number === storeNumber);
-    if (selected) {
-      setter((prev: any) => ({
-        ...prev,
-        store: selected.store_name,
-        store_number: selected.store_number,
-        city: `${selected.city}, ${selected.state}`,
-      }));
-    } else {
-      setter((prev: any) => ({ ...prev, store: '', store_number: '', city: '' }));
-    }
-  };
-
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (roleFilter) params.set('role', roleFilter);
-      if (storeFilter) params.set('store', storeFilter);
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (roleFilter !== 'all') params.set('role', roleFilter);
       if (search) params.set('search', search);
 
       const qs = params.toString();
-      const res = await fetch(`/api/admin/app-users${qs ? `?${qs}` : ''}`);
+      const res = await fetch(`/api/admin/profiles${qs ? `?${qs}` : ''}`);
       if (!res.ok) throw new Error('Failed to fetch users');
       const data = await res.json();
       setUsers(data);
@@ -135,7 +113,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [roleFilter, storeFilter, search]);
+  }, [statusFilter, roleFilter, search]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, search ? 300 : 0);
@@ -144,14 +122,16 @@ export default function UsersPage() {
 
   const stats = useMemo(() => ({
     total: users.length,
-    active: users.filter(u => u.is_active).length,
-    admins: users.filter(u => u.role === 'admin').length,
+    active: users.filter(u => u.status === 'active').length,
+    pending: users.filter(u => u.status === 'pending').length,
+    avgScore: users.length > 0
+      ? Math.round(users.reduce((sum, u) => sum + (u.average_score || 0), 0) / users.length)
+      : 0,
   }), [users]);
 
-  const startEditing = (user: AppUser) => {
+  const startEditing = (user: ProfileUser) => {
     setEditingId(user.id);
     setEditForm({ ...user });
-    setIsAdding(false);
   };
 
   const cancelEditing = () => {
@@ -160,16 +140,22 @@ export default function UsersPage() {
   };
 
   const handleSave = async () => {
-    if (!editForm.name?.trim() || !editForm.email?.trim()) {
-      toast.error('Name and email are required');
-      return;
-    }
+    if (!editingId) return;
     setSaving(editingId);
     try {
-      const res = await fetch('/api/admin/app-users', {
+      const res = await fetch('/api/admin/profiles', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingId, ...editForm }),
+        body: JSON.stringify({
+          id: editingId,
+          role: editForm.role,
+          status: editForm.status,
+          store_id: editForm.store_id,
+          job_title: editForm.job_title,
+          first_name: editForm.first_name,
+          last_name: editForm.last_name,
+          phone: editForm.phone,
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -186,98 +172,46 @@ export default function UsersPage() {
     }
   };
 
-  const handleAdd = async () => {
-    if (!addForm.name.trim() || !addForm.email.trim()) {
-      toast.error('Name and email are required');
-      return;
-    }
-    setSaving('new');
+  const handleStatusChange = async (userId: string, newStatus: string) => {
+    setSaving(userId);
     try {
-      const res = await fetch('/api/admin/app-users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addForm),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as Record<string, string>).error ?? 'Create failed');
-      }
-      toast.success('User created');
-      setIsAdding(false);
-      setAddForm(EMPTY_USER);
-      await fetchUsers();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to create user');
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    setSaving(id);
-    try {
-      const res = await fetch('/api/admin/app-users', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      if (!res.ok) throw new Error('Delete failed');
-      setUsers(prev => prev.filter(u => u.id !== id));
-      if (editingId === id) cancelEditing();
-      toast.success('User deleted');
-    } catch {
-      toast.error('Failed to delete user');
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  const handleToggleActive = async (user: AppUser) => {
-    setTogglingId(user.id);
-    try {
-      const res = await fetch('/api/admin/app-users', {
+      const res = await fetch('/api/admin/profiles', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: user.id, is_active: !user.is_active }),
+        body: JSON.stringify({ id: userId, status: newStatus }),
       });
-      if (!res.ok) throw new Error('Toggle failed');
+      if (!res.ok) throw new Error('Status update failed');
       const updated = await res.json();
-      setUsers(prev => prev.map(u => (u.id === user.id ? updated : u)));
-      toast.success(user.is_active ? 'User deactivated' : 'User activated');
+      setUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
+      toast.success(`User ${newStatus === 'active' ? 'approved' : newStatus}`);
     } catch {
-      toast.error('Failed to update user status');
+      toast.error('Failed to update status');
     } finally {
-      setTogglingId(null);
+      setSaving(null);
     }
   };
+
+  const statusTabs: { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'pending', label: `Pending (${stats.pending})` },
+    { key: 'active', label: 'Active' },
+    { key: 'suspended', label: 'Suspended' },
+    { key: 'deactivated', label: 'Deactivated' },
+  ];
 
   return (
     <RoleGate minRole="manager">
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
+      <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-coach-black tracking-tight">Users</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage user profiles, roles, and store assignments
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                setIsAdding(true);
-                setAddForm(EMPTY_USER);
-                cancelEditing();
-              }}
-              disabled={isAdding}
-              className="bg-coach-gold hover:bg-coach-gold/90 text-white"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Add User
-            </Button>
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-coach-black tracking-tight">Users</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage user profiles, approve registrations, and assign roles
+            </p>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             <Card className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-coach-gold/10 flex items-center justify-center">
                 <Users className="h-5 w-5 text-coach-gold" />
@@ -289,7 +223,7 @@ export default function UsersPage() {
             </Card>
             <Card className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <User className="h-5 w-5 text-emerald-600" />
+                <UserCheck className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
                 <p className="text-2xl font-semibold text-coach-black">{stats.active}</p>
@@ -297,15 +231,44 @@ export default function UsersPage() {
               </div>
             </Card>
             <Card className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                <Shield className="h-5 w-5 text-purple-600" />
+              <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-2xl font-semibold text-coach-black">{stats.admins}</p>
-                <p className="text-xs text-gray-500">Admins</p>
+                <p className="text-2xl font-semibold text-coach-black">{stats.pending}</p>
+                <p className="text-xs text-gray-500">Pending Approval</p>
+              </div>
+            </Card>
+            <Card className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                <Trophy className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-coach-black">{stats.avgScore}%</p>
+                <p className="text-xs text-gray-500">Avg Score</p>
               </div>
             </Card>
           </div>
+
+          {/* Status Tabs */}
+          <Card className="p-3 mb-4">
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden w-fit">
+              {statusTabs.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={cn(
+                    'px-4 py-2 text-sm font-medium transition-colors',
+                    statusFilter === tab.key
+                      ? 'bg-coach-gold text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </Card>
 
           {/* Search & Filters */}
           <Card className="p-3 mb-6">
@@ -321,117 +284,16 @@ export default function UsersPage() {
               </div>
               <select
                 value={roleFilter}
-                onChange={e => setRoleFilter(e.target.value as UserRole)}
+                onChange={e => setRoleFilter(e.target.value as RoleFilter)}
                 className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
               >
-                <option value="">All Roles</option>
-                <option value="associate">Associate</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
+                <option value="all">All Roles</option>
+                {ROLE_OPTIONS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
               </select>
-              <div className="relative">
-                <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Filter by store..."
-                  value={storeFilter}
-                  onChange={e => setStoreFilter(e.target.value)}
-                  className="pl-9 w-44"
-                />
-              </div>
             </div>
           </Card>
-
-          {/* Add User Form */}
-          {isAdding && (
-            <Card className="mb-6 border-coach-gold/40 bg-coach-gold/[0.02]">
-              <div className="p-5 border-b border-border/50">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-coach-black">New User</h3>
-                  <button
-                    onClick={() => { setIsAdding(false); setAddForm(EMPTY_USER); }}
-                    className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-                  >
-                    <X className="h-4 w-4 text-gray-400" />
-                  </button>
-                </div>
-              </div>
-              <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <Label weight="semibold" required>Name</Label>
-                  <Input
-                    value={addForm.name}
-                    onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="Jane Doe"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label weight="semibold" required>Email</Label>
-                  <Input
-                    type="email"
-                    value={addForm.email}
-                    onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
-                    placeholder="jane@coach.com"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label weight="semibold">Title</Label>
-                  <Input
-                    value={addForm.title}
-                    onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label weight="semibold">Store</Label>
-                  <select
-                    value={addForm.store_number}
-                    onChange={e => handleStoreSelect(e.target.value, setAddForm)}
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
-                  >
-                    <option value="">Select a store...</option>
-                    {storesList.map(s => (
-                      <option key={s.store_number} value={s.store_number}>
-                        #{s.store_number} — {s.store_name} ({s.city}, {s.state})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label weight="semibold">Role</Label>
-                  <select
-                    value={addForm.role}
-                    onChange={e => setAddForm(f => ({ ...f, role: e.target.value as AppUser['role'] }))}
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
-                  >
-                    <option value="associate">Associate</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-              </div>
-              <div className="px-5 pb-5 flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={handleAdd}
-                  disabled={saving === 'new'}
-                  className="bg-coach-gold hover:bg-coach-gold/90 text-white"
-                >
-                  {saving === 'new' ? (
-                    <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4 mr-1.5" />
-                  )}
-                  Create User
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => { setIsAdding(false); setAddForm(EMPTY_USER); }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </Card>
-          )}
 
           {/* User List */}
           {loading ? (
@@ -447,9 +309,11 @@ export default function UsersPage() {
           ) : (
             <div className="space-y-3">
               {users.map(user => {
-                const roleConfig = ROLE_CONFIG[user.role];
+                const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.associate;
+                const statusConfig = STATUS_CONFIG[user.status] || STATUS_CONFIG.pending;
+                const StatusIcon = statusConfig.icon;
                 const isEditing = editingId === user.id;
-                const isToggling = togglingId === user.id;
+                const isSaving = saving === user.id;
 
                 return (
                   <Card
@@ -457,110 +321,133 @@ export default function UsersPage() {
                     className={cn(
                       'transition-all',
                       isEditing && 'ring-1 ring-coach-gold/40 bg-coach-gold/[0.02]',
-                      !user.is_active && !isEditing && 'opacity-60'
+                      user.status === 'deactivated' && !isEditing && 'opacity-60'
                     )}
                   >
-                    {/* Display Row */}
                     <div className="p-4 flex items-center gap-4">
-                      {/* Avatar */}
                       <div className="flex-shrink-0">
                         {user.avatar_url ? (
                           <img
                             src={user.avatar_url}
-                            alt={user.name}
+                            alt={user.display_name}
                             className="h-10 w-10 rounded-full object-cover"
                           />
                         ) : (
                           <div className="h-10 w-10 rounded-full bg-coach-mahogany/10 flex items-center justify-center">
                             <span className="text-sm font-semibold text-coach-mahogany">
-                              {getInitials(user.name)}
+                              {getInitials(user.first_name, user.last_name)}
                             </span>
                           </div>
                         )}
                       </div>
 
-                      {/* Info */}
                       <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-x-6 gap-y-1 items-center">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-semibold text-coach-black truncate">
-                              {user.name}
+                              {user.display_name}
                             </span>
                             <span className={cn(
                               'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium',
-                              roleConfig.bg,
-                              roleConfig.text
+                              roleConfig.bg, roleConfig.text
                             )}>
                               <Shield className="h-3 w-3" />
                               {roleConfig.label}
                             </span>
-                            {!user.is_active && (
-                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">
-                                Inactive
-                              </span>
-                            )}
+                            <span className={cn(
+                              'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium',
+                              statusConfig.bg, statusConfig.text
+                            )}>
+                              <StatusIcon className="h-3 w-3" />
+                              {statusConfig.label}
+                            </span>
                           </div>
                           <div className="flex items-center gap-3 mt-0.5">
                             <span className="text-xs text-gray-400 flex items-center gap-1 truncate">
                               <Mail className="h-3 w-3 flex-shrink-0" />
                               {user.email}
                             </span>
-                            <span className="text-xs text-gray-400">
-                              {user.title}
-                            </span>
+                            {user.job_title && (
+                              <span className="text-xs text-gray-400">{user.job_title}</span>
+                            )}
                           </div>
-                          {(user.store || user.city) && (
+                          {user.stores && (
                             <span className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                               <Store className="h-3 w-3 flex-shrink-0" />
-                              {[user.store, user.store_number && `#${user.store_number}`, user.city].filter(Boolean).join(' · ')}
+                              {user.stores.store_number} — {user.stores.store_name} ({user.stores.city}, {user.stores.state})
                             </span>
                           )}
                         </div>
 
-                        {/* Score Badges */}
                         <div className="flex items-center gap-3">
-                          {user.score > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-amber-600" title="Score">
+                          {user.average_score > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-amber-600" title="Avg Score">
                               <Trophy className="h-3.5 w-3.5" />
-                              {user.score}
+                              {user.average_score}%
                             </span>
                           )}
-                          {user.rank && (
-                            <span className="flex items-center gap-1 text-xs text-coach-gold" title="Rank">
+                          {user.practice_sessions > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-coach-gold" title="Sessions">
                               <Award className="h-3.5 w-3.5" />
-                              {user.rank}
+                              {user.practice_sessions}
                             </span>
                           )}
-                          {user.streak > 0 && (
+                          {user.day_streak > 0 && (
                             <span className="flex items-center gap-1 text-xs text-orange-500" title="Streak">
                               <Flame className="h-3.5 w-3.5" />
-                              {user.streak}d
+                              {user.day_streak}d
                             </span>
                           )}
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleToggleActive(user)}
-                            disabled={isToggling}
-                            className={cn(
-                              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                              user.is_active ? 'bg-coach-gold' : 'bg-gray-300'
-                            )}
-                            title={user.is_active ? 'Deactivate' : 'Activate'}
-                          >
-                            {isToggling ? (
-                              <Loader2 className="h-3 w-3 animate-spin text-white mx-auto" />
-                            ) : (
-                              <span
-                                className={cn(
-                                  'inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform',
-                                  user.is_active ? 'translate-x-4' : 'translate-x-1'
-                                )}
-                              />
-                            )}
-                          </button>
+                        <div className="flex items-center gap-1.5">
+                          {user.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleStatusChange(user.id, 'active')}
+                              disabled={isSaving}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                            >
+                              {isSaving ? (
+                                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                              )}
+                              Approve
+                            </Button>
+                          )}
+                          {user.status === 'active' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStatusChange(user.id, 'suspended')}
+                              disabled={isSaving}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200 text-xs"
+                            >
+                              {isSaving ? (
+                                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                              ) : (
+                                <Ban className="w-3.5 h-3.5 mr-1" />
+                              )}
+                              Suspend
+                            </Button>
+                          )}
+                          {user.status === 'suspended' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStatusChange(user.id, 'active')}
+                              disabled={isSaving}
+                              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-200 text-xs"
+                            >
+                              {isSaving ? (
+                                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                              )}
+                              Reactivate
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -573,84 +460,81 @@ export default function UsersPage() {
                               <Pencil className="h-4 w-4 text-gray-400" />
                             )}
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => handleDelete(user.id)}
-                            disabled={saving === user.id}
-                            title="Delete"
-                            className="hover:text-red-600"
-                          >
-                            {saving === user.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-destructive" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 text-destructive/70" />
-                            )}
-                          </Button>
                         </div>
                       </div>
                     </div>
 
-                    {/* Edit Panel */}
                     {isEditing && (
                       <div className="border-t border-coach-gold/20 bg-coach-gold/[0.01] p-5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           <div className="space-y-1.5">
-                            <Label weight="semibold" required>Name</Label>
+                            <Label weight="semibold">First Name</Label>
                             <Input
-                              value={editForm.name ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                              value={editForm.first_name ?? ''}
+                              onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))}
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label weight="semibold" required>Email</Label>
+                            <Label weight="semibold">Last Name</Label>
                             <Input
-                              type="email"
-                              value={editForm.email ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                              value={editForm.last_name ?? ''}
+                              onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))}
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label weight="semibold">Title</Label>
+                            <Label weight="semibold">Job Title</Label>
                             <Input
-                              value={editForm.title ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                              value={editForm.job_title ?? ''}
+                              onChange={e => setEditForm(f => ({ ...f, job_title: e.target.value }))}
                             />
                           </div>
-                          <div className="space-y-1.5 sm:col-span-2">
-                            <Label weight="semibold">Store</Label>
-                            <select
-                              value={editForm.store_number ?? ''}
-                              onChange={e => handleStoreSelect(e.target.value, setEditForm)}
-                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
-                            >
-                              <option value="">Select a store...</option>
-                              {storesList.map(s => (
-                                <option key={s.store_number} value={s.store_number}>
-                                  #{s.store_number} — {s.store_name} ({s.city}, {s.state})
-                                </option>
-                              ))}
-                            </select>
+                          <div className="space-y-1.5">
+                            <Label weight="semibold">Phone</Label>
+                            <Input
+                              value={editForm.phone ?? ''}
+                              onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                              placeholder="+1 (555) 000-0000"
+                            />
                           </div>
                           <div className="space-y-1.5">
                             <Label weight="semibold">Role</Label>
                             <select
                               value={editForm.role ?? 'associate'}
-                              onChange={e => setEditForm(f => ({ ...f, role: e.target.value as AppUser['role'] }))}
+                              onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
                               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
                             >
-                              <option value="associate">Associate</option>
-                              <option value="manager">Manager</option>
-                              <option value="admin">Admin</option>
+                              {ROLE_OPTIONS.map(r => (
+                                <option key={r.value} value={r.value}>{r.label}</option>
+                              ))}
                             </select>
                           </div>
                           <div className="space-y-1.5">
-                            <Label weight="semibold">Avatar URL</Label>
-                            <Input
-                              value={editForm.avatar_url ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, avatar_url: e.target.value || null }))}
-                              placeholder="https://..."
-                            />
+                            <Label weight="semibold">Status</Label>
+                            <select
+                              value={editForm.status ?? 'pending'}
+                              onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="active">Active</option>
+                              <option value="suspended">Suspended</option>
+                              <option value="deactivated">Deactivated</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <Label weight="semibold">Store</Label>
+                            <select
+                              value={editForm.store_id ?? ''}
+                              onChange={e => setEditForm(f => ({ ...f, store_id: e.target.value || null }))}
+                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+                            >
+                              <option value="">No store assigned</option>
+                              {storesList.map(s => (
+                                <option key={s.id} value={s.id}>
+                                  {s.store_number} — {s.store_name} ({s.city}, {s.state})
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 mt-5">
@@ -670,11 +554,10 @@ export default function UsersPage() {
                           <Button size="sm" variant="outline" onClick={cancelEditing}>
                             Cancel
                           </Button>
-                          {user.member_since && (
-                            <span className="ml-auto text-xs text-gray-400">
-                              Member since {formatDate(user.member_since)}
-                            </span>
-                          )}
+                          <span className="ml-auto text-xs text-gray-400">
+                            Joined {formatDate(user.created_at)}
+                            {user.last_active_at && ` · Last active ${formatDate(user.last_active_at)}`}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -684,7 +567,7 @@ export default function UsersPage() {
             </div>
           )}
         </div>
-    </div>
+      </div>
     </RoleGate>
   );
 }

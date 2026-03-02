@@ -316,7 +316,7 @@ export default function PracticeFloorPage() {
   );
 
   return (
-    <RoleGate minRole="manager" readOnlyFor={['manager']}>
+    <RoleGate minRole="store_manager" readOnlyFor={['store_manager']}>
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           {/* Header */}

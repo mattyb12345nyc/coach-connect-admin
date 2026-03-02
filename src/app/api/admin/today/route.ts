@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const filterScope = <T extends { scope_type?: string; store_id?: string | null; store_region?: string | null }>(
       items: T[]
     ) => {
-      if (audience === 'user' || context.role === 'manager') {
+      if (audience === 'user' || context.role === 'store_manager') {
         return items.filter(
           (item) =>
             item.scope_type === 'global' ||
@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
     const supabase = getAdminClient();
     const body = await request.json();
     const { table, ...record } = body;
-    const scopeType = context.role === 'manager' ? 'store' : record.scope_type || 'global';
-    const storeId = context.role === 'manager' ? context.storeId : record.store_id || null;
+    const scopeType = context.role === 'store_manager' ? 'store' : record.scope_type || 'global';
+    const storeId = context.role === 'store_manager' ? context.storeId : record.store_id || null;
     const storeRegion = scopeType === 'region' ? record.store_region || null : null;
 
     const tableMap: Record<string, string> = {

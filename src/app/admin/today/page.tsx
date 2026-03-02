@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
-import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { useAdminAuth, type AdminRole } from '@/contexts/AdminAuthContext';
 
 type TableName = 'focus_cards' | 'cultural_moments' | 'whats_new';
 
@@ -144,12 +144,12 @@ function TargetingFields({
 }: {
   data: { scope_type: 'global' | 'region' | 'store'; store_id: string | null; store_region: string | null };
   onChange: (next: { scope_type: 'global' | 'region' | 'store'; store_id: string | null; store_region: string | null }) => void;
-  role: 'associate' | 'manager' | 'admin';
+  role: AdminRole;
   storeId: string | null;
   stores: StoreSummary[];
 }) {
   const regions = Array.from(new Set(stores.map((store) => store.region).filter(Boolean))).sort();
-  const isManager = role === 'manager';
+  const isManager = role === 'store_manager';
   const scopeValue = isManager ? 'store' : data.scope_type;
   const selectedStoreId = isManager ? storeId : data.store_id;
 
@@ -308,7 +308,7 @@ function FocusCardForm({
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
-  role: 'associate' | 'manager' | 'admin';
+  role: AdminRole;
   storeId: string | null;
   stores: StoreSummary[];
 }) {
@@ -380,7 +380,7 @@ function CulturalMomentForm({
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
-  role: 'associate' | 'manager' | 'admin';
+  role: AdminRole;
   storeId: string | null;
   stores: StoreSummary[];
 }) {
@@ -452,7 +452,7 @@ function WhatsNewForm({
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
-  role: 'associate' | 'manager' | 'admin';
+  role: AdminRole;
   storeId: string | null;
   stores: StoreSummary[];
 }) {
@@ -713,7 +713,7 @@ export default function TodayDashboardPage() {
   }
 
   return (
-    <RoleGate minRole="manager">
+    <RoleGate minRole="store_manager">
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
           <div className="mb-8">

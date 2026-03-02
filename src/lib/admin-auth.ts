@@ -1,12 +1,14 @@
 import { NextRequest } from 'next/server';
 import { getAdminClient } from '@/lib/supabase';
 
-export type AdminRole = 'associate' | 'manager' | 'admin';
+export type AdminRole = 'associate' | 'store_manager' | 'regional_manager' | 'admin' | 'super_admin';
 
 const ROLE_LEVEL: Record<AdminRole, number> = {
   associate: 0,
-  manager: 1,
-  admin: 2,
+  store_manager: 1,
+  regional_manager: 2,
+  admin: 3,
+  super_admin: 4,
 };
 
 interface AdminAuthResult {
@@ -15,35 +17,45 @@ interface AdminAuthResult {
   userId: string | null;
 }
 
-/**
- * Validates that the requesting user has at minimum the given role.
- * Reads the Supabase auth token from cookies/headers, looks up the user in app_users.
- * Returns the user's role and store_id if valid, or null to skip enforcement
- * (e.g., when auth is not configured or during development).
- */
 export async function getAdminRole(request: NextRequest): Promise<AdminAuthResult | null> {
   try {
     const supabase = getAdminClient();
-    const authHeader = request.headers.get('authorization');
     const email = request.headers.get('x-admin-email');
 
     if (email) {
-      const { data } = await supabase
+      // Try profiles table first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role, store_id')
+        .eq('email', email)
+        .single();
+
+      if (profile) {
+        return {
+          role: profile.role as AdminRole,
+          storeId: profile.store_id,
+          userId: profile.id,
+        };
+      }
+
+      // Fallback to app_users for backwards compatibility
+      const { data: appUser } = await supabase
         .from('app_users')
         .select('id, role, store_id')
         .eq('email', email)
         .single();
 
-      if (data) {
+      if (appUser) {
+        const legacyRole = appUser.role as string;
+        const mappedRole: AdminRole = legacyRole === 'admin' ? 'admin' : legacyRole === 'manager' ? 'store_manager' : 'associate';
         return {
-          role: data.role as AdminRole,
-          storeId: data.store_id,
-          userId: data.id,
+          role: mappedRole,
+          storeId: appUser.store_id,
+          userId: appUser.id,
         };
       }
     }
 
-    // No auth enforcement available -- allow through (admin default)
     return null;
   } catch {
     return null;

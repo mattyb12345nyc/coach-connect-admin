@@ -204,10 +204,10 @@ export default function AdminProfilePage() {
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Role</p>
                 <p className="text-sm font-medium text-gray-700 capitalize">{role}</p>
               </div>
-              {user.store && (
+              {user.store_name && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Store</p>
-                  <p className="text-sm font-medium text-gray-700">{user.store}</p>
+                  <p className="text-sm font-medium text-gray-700">{user.store_name}</p>
                 </div>
               )}
             </div>
