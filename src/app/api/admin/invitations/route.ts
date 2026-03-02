@@ -33,10 +33,23 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getAdminClient();
     const body = await request.json();
-    const { email, first_name, last_name, role, store_id, invited_by } = body;
+    const { email, first_name, last_name, role, store_id, region, invited_by } = body;
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    const inviteRole = role || 'associate';
+    const normalizedRegion = typeof region === 'string' ? region.trim() : null;
+
+    if (inviteRole === 'admin' && store_id) {
+      return NextResponse.json({ error: 'Admin invites should not include a store' }, { status: 400 });
+    }
+    if (inviteRole === 'regional_manager' && !normalizedRegion) {
+      return NextResponse.json({ error: 'Region is required for regional manager invites' }, { status: 400 });
+    }
+    if ((inviteRole === 'associate' || inviteRole === 'store_manager') && !store_id) {
+      return NextResponse.json({ error: 'Store is required for associate and store manager invites' }, { status: 400 });
     }
 
     const { data: existing } = await supabase
@@ -73,8 +86,9 @@ export async function POST(request: NextRequest) {
         email,
         first_name: first_name || null,
         last_name: last_name || null,
-        role: role || 'associate',
-        store_id: store_id || null,
+        role: inviteRole,
+        store_id: inviteRole === 'admin' || inviteRole === 'regional_manager' ? null : store_id || null,
+        region: inviteRole === 'regional_manager' ? normalizedRegion : null,
         invited_by: invitedByUuid,
         token,
       })

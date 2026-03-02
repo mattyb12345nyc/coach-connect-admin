@@ -19,6 +19,7 @@ interface StoreOption {
   store_name: string;
   city: string;
   state: string;
+  region?: string | null;
 }
 
 interface Invitation {
@@ -27,7 +28,8 @@ interface Invitation {
   first_name: string | null;
   last_name: string | null;
   role: string;
-  store_id: string;
+  store_id: string | null;
+  region: string | null;
   invited_by: string;
   token: string;
   status: 'pending' | 'accepted' | 'expired' | 'revoked';
@@ -76,6 +78,7 @@ export default function InvitationsPage() {
   const [lastName, setLastName] = useState('');
   const [inviteRole, setInviteRole] = useState('associate');
   const [selectedStoreId, setSelectedStoreId] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('');
 
   const [successResult, setSuccessResult] = useState<{
     invite_url: string;
@@ -118,6 +121,19 @@ export default function InvitationsPage() {
     }
   }, [isAdmin, storeId]);
 
+  useEffect(() => {
+    if (inviteRole === 'admin') {
+      setSelectedStoreId('');
+      setSelectedRegion('');
+      return;
+    }
+    if (inviteRole === 'regional_manager') {
+      setSelectedStoreId('');
+      return;
+    }
+    setSelectedRegion('');
+  }, [inviteRole]);
+
   const stats = useMemo(() => ({
     total: invitations.length,
     pending: invitations.filter(i => i.status === 'pending').length,
@@ -129,10 +145,28 @@ export default function InvitationsPage() {
     return invitations.filter(i => i.status === activeTab);
   }, [invitations, activeTab]);
 
+  const regionOptions = useMemo(() => {
+    const unique = new Set<string>();
+    for (const s of stores) {
+      if (s.region) unique.add(s.region);
+    }
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [stores]);
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !selectedStoreId) {
-      toast.error('Please fill in email and store');
+    const requiresStore = inviteRole === 'associate' || inviteRole === 'store_manager';
+    const requiresRegion = inviteRole === 'regional_manager';
+    if (!email) {
+      toast.error('Please fill in email');
+      return;
+    }
+    if (requiresStore && !selectedStoreId) {
+      toast.error('Please select a store');
+      return;
+    }
+    if (requiresRegion && !selectedRegion) {
+      toast.error('Please select a region');
       return;
     }
 
@@ -147,7 +181,8 @@ export default function InvitationsPage() {
           first_name: firstName || undefined,
           last_name: lastName || undefined,
           role: inviteRole,
-          store_id: selectedStoreId,
+          store_id: requiresStore ? selectedStoreId : undefined,
+          region: requiresRegion ? selectedRegion : undefined,
           invited_by: user?.id ?? user?.email ?? 'admin',
         }),
       });
@@ -163,6 +198,8 @@ export default function InvitationsPage() {
       setEmail('');
       setFirstName('');
       setLastName('');
+      setSelectedStoreId('');
+      setSelectedRegion('');
       fetchInvitations();
       toast.success('Invitation sent');
     } catch (e) {
@@ -278,25 +315,45 @@ export default function InvitationsPage() {
               </div>
 
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label size="xs" weight="semibold">Store *</Label>
-                  <select
-                    value={selectedStoreId}
-                    onChange={e => setSelectedStoreId(e.target.value)}
-                    disabled={!isAdmin && !!storeId}
-                    className={cn(
-                      'w-full h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold',
-                      !isAdmin && storeId && 'opacity-60 cursor-not-allowed'
-                    )}
-                  >
-                    <option value="">Select a store</option>
-                    {stores.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.store_number} — {s.store_name} ({s.city}, {s.state})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {inviteRole === 'regional_manager' && (
+                  <div className="space-y-1.5">
+                    <Label size="xs" weight="semibold">Region *</Label>
+                    <select
+                      value={selectedRegion}
+                      onChange={e => setSelectedRegion(e.target.value)}
+                      className="w-full h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+                    >
+                      <option value="">Select a region</option>
+                      {regionOptions.map(region => (
+                        <option key={region} value={region}>
+                          {region}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {(inviteRole === 'associate' || inviteRole === 'store_manager') && (
+                  <div className="space-y-1.5">
+                    <Label size="xs" weight="semibold">Store *</Label>
+                    <select
+                      value={selectedStoreId}
+                      onChange={e => setSelectedStoreId(e.target.value)}
+                      disabled={!isAdmin && !!storeId}
+                      className={cn(
+                        'w-full h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold',
+                        !isAdmin && storeId && 'opacity-60 cursor-not-allowed'
+                      )}
+                    >
+                      <option value="">Select an open store</option>
+                      {stores.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.store_number} — {s.store_name} ({s.city}, {s.state})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 flex items-center gap-3">
@@ -466,6 +523,9 @@ export default function InvitationsPage() {
                             <span>
                               {invitation.stores.store_number} — {invitation.stores.store_name}
                             </span>
+                          )}
+                          {!invitation.stores && invitation.region && (
+                            <span>Region: {invitation.region}</span>
                           )}
                           <span>Sent {formatDate(invitation.created_at)}</span>
                           {invitation.status === 'pending' && (
