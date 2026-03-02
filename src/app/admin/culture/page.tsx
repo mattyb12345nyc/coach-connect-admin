@@ -645,11 +645,23 @@ export default function CultureFeedPage() {
         headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({ candidateIds: selectedCandidateIds }),
       });
+      const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Image generation failed');
+        throw new Error(payload.error || 'Image generation failed');
       }
-      toast.success('Images generated for selected trends');
+      const updatedCandidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+      if (updatedCandidates.length > 0) {
+        setCandidates((prev) =>
+          prev.map((candidate) => updatedCandidates.find((updated: TrendCandidate) => updated.id === candidate.id) || candidate)
+        );
+      }
+      const generatedCount = Number(payload?.generatedCount || 0);
+      const failedCount = Number(payload?.failedCount || 0);
+      toast.success(
+        failedCount > 0
+          ? `Generated ${generatedCount} image(s), ${failedCount} failed`
+          : `Generated ${generatedCount} image(s)`
+      );
       await fetchCandidates();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Image generation failed';
@@ -776,7 +788,7 @@ export default function CultureFeedPage() {
                         onChange={(e) => setTrendScope(e.target.value as 'global' | 'region' | 'store')}
                         className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
                       >
-                        <option value="global">Global</option>
+                        <option value="global">All Stores</option>
                         <option value="region">Region</option>
                         <option value="store">Store</option>
                       </select>
@@ -871,7 +883,7 @@ export default function CultureFeedPage() {
                           />
                           <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
                             {candidate.scope_type === 'global'
-                              ? 'Global'
+                              ? 'All Stores'
                               : candidate.scope_type === 'region'
                               ? `Region: ${candidate.store_region || 'Unknown'}`
                               : 'Store'}

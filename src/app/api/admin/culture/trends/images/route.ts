@@ -47,7 +47,26 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ candidates: updates });
+    const generatedCount = updates.filter((candidate) => Boolean(candidate.image_url)).length;
+    const failedCount = updates.length - generatedCount;
+
+    if (generatedCount === 0) {
+      return NextResponse.json(
+        {
+          error: 'Image provider returned no images for the selected trends',
+          candidates: updates,
+          generatedCount,
+          failedCount,
+        },
+        { status: 422 }
+      );
+    }
+
+    return NextResponse.json({
+      candidates: updates,
+      generatedCount,
+      failedCount,
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Image generation failed' }, { status: 500 });
   }
