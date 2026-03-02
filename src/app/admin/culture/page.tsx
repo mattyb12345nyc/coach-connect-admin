@@ -479,6 +479,7 @@ function SelectDropdown({
 function TrendWizardModal({
   open,
   onClose,
+  initialPhase = 'wizard',
   role,
   storeId,
   stores,
@@ -490,7 +491,9 @@ function TrendWizardModal({
   generating,
   onApprove,
   onReject,
+  onBulkReject,
   processingCandidateId,
+  bulkRejecting,
   onGenerateImages,
   generatingImages,
   imageCount,
@@ -502,6 +505,7 @@ function TrendWizardModal({
 }: {
   open: boolean;
   onClose: () => void;
+  initialPhase?: 'wizard' | 'review';
   role: string;
   storeId: string | null;
   stores: StoreSummary[];
@@ -522,7 +526,9 @@ function TrendWizardModal({
   generating: boolean;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
+  onBulkReject: (ids: string[]) => void;
   processingCandidateId: string | null;
+  bulkRejecting: boolean;
   onGenerateImages: () => void;
   generatingImages: boolean;
   imageCount: number;
@@ -556,9 +562,9 @@ function TrendWizardModal({
       setScope('global');
       setScopeStoreId('');
       setScopeRegion('');
-      setPhase('wizard');
+      setPhase(initialPhase);
     }
-  }, [open]);
+  }, [open, initialPhase]);
 
   useEffect(() => {
     if (generating) setPhase('review');
@@ -785,29 +791,51 @@ function TrendWizardModal({
                 </div>
               ) : (
                 <>
-                  {/* Image generation toolbar */}
+                  {/* Toolbar */}
                   <div className="mb-5 p-4 rounded-2xl bg-gray-50 border border-gray-100">
                     <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allSelected = selectedCandidateIds.length === candidates.length;
+                            candidates.forEach((c) => onToggleCandidateSelection(c.id, !allSelected));
+                          }}
+                          className="text-xs font-medium text-coach-gold hover:underline"
+                        >
+                          {selectedCandidateIds.length === candidates.length ? 'Deselect all' : 'Select all'}
+                        </button>
+                        <span className="text-xs text-gray-400">
                           {selectedCandidateIds.length} of {candidates.length} selected
-                        </p>
+                        </span>
                         {candidates.some((c) => c.image_status === 'pending' || c.image_status === 'processing') && (
-                          <p className="text-xs text-coach-gold mt-0.5 flex items-center gap-1">
+                          <span className="text-xs text-coach-gold flex items-center gap-1">
                             <Loader2 className="w-3 h-3 animate-spin" />
-                            Generating images in background...
-                          </p>
+                            Generating...
+                          </span>
                         )}
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={onGenerateImages}
-                        disabled={generatingImages || selectedCandidateIds.length === 0}
-                        className="bg-coach-gold hover:bg-coach-gold/90 text-white rounded-lg"
-                      >
-                        {generatingImages ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <ImagePlus className="w-4 h-4 mr-1.5" />}
-                        Generate Images
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onBulkReject(selectedCandidateIds)}
+                          disabled={bulkRejecting || selectedCandidateIds.length === 0}
+                          className="rounded-lg h-8 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          {bulkRejecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
+                          Reject Selected
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={onGenerateImages}
+                          disabled={generatingImages || selectedCandidateIds.length === 0}
+                          className="bg-coach-gold hover:bg-coach-gold/90 text-white rounded-lg"
+                        >
+                          {generatingImages ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <ImagePlus className="w-4 h-4 mr-1.5" />}
+                          Generate Images
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
                       <select
@@ -1003,6 +1031,8 @@ export default function CultureFeedPage() {
   const [editingForm, setEditingForm] = useState<CultureFormData | null>(null);
   const [stores, setStores] = useState<StoreSummary[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardInitialPhase, setWizardInitialPhase] = useState<'wizard' | 'review'>('wizard');
+  const [bulkRejecting, setBulkRejecting] = useState(false);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
   const [imageCount, setImageCount] = useState(1);
   const [realWorldAccuracy, setRealWorldAccuracy] = useState(false);
@@ -1131,6 +1161,27 @@ export default function CultureFeedPage() {
     finally { setProcessingCandidateId(null); }
   };
 
+  const handleBulkReject = async (ids: string[]) => {
+    if (!ids.length) return;
+    try {
+      setBulkRejecting(true);
+      await Promise.all(ids.map((id) =>
+        fetch('/api/admin/culture/trends/reject', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...adminHeaders },
+          body: JSON.stringify({ candidateId: id }),
+        })
+      ));
+      toast.success(`Rejected ${ids.length} trend${ids.length !== 1 ? 's' : ''}`);
+      setSelectedCandidateIds([]);
+      await fetchCandidates();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Bulk reject failed');
+    } finally {
+      setBulkRejecting(false);
+    }
+  };
+
   const toggleCandidateSelection = (candidateId: string, checked: boolean) => {
     setSelectedCandidateIds((prev) => checked ? Array.from(new Set([...prev, candidateId])) : prev.filter((id) => id !== candidateId));
   };
@@ -1254,7 +1305,7 @@ export default function CultureFeedPage() {
               <Button variant="outline" onClick={() => setEditingForm({ ...EMPTY_FORM })} disabled={!!editingForm}>
                 <Plus className="w-4 h-4 mr-1.5" /> Add Item
               </Button>
-              <Button onClick={() => setWizardOpen(true)} className="bg-coach-gold hover:bg-coach-gold/90 text-white">
+              <Button onClick={() => { setWizardInitialPhase('wizard'); setWizardOpen(true); }} className="bg-coach-gold hover:bg-coach-gold/90 text-white">
                 <Sparkles className="w-4 h-4 mr-1.5" /> Create Trends
               </Button>
             </div>
@@ -1277,7 +1328,7 @@ export default function CultureFeedPage() {
           </div>
 
           {/* Pending review banner */}
-          <PendingReviewBanner count={candidates.length} onClick={() => setWizardOpen(true)} />
+          <PendingReviewBanner count={candidates.length} onClick={() => { setWizardInitialPhase('review'); setWizardOpen(true); }} />
 
           {/* Filter tabs */}
           <Card className="p-3 mb-6">
@@ -1341,6 +1392,7 @@ export default function CultureFeedPage() {
         <TrendWizardModal
           open={wizardOpen}
           onClose={() => setWizardOpen(false)}
+          initialPhase={wizardInitialPhase}
           role={role}
           storeId={storeId}
           stores={stores}
@@ -1352,7 +1404,9 @@ export default function CultureFeedPage() {
           generating={generating}
           onApprove={handleApproveCandidate}
           onReject={handleRejectCandidate}
+          onBulkReject={handleBulkReject}
           processingCandidateId={processingCandidateId}
+          bulkRejecting={bulkRejecting}
           onGenerateImages={handleGenerateImagesForSelected}
           generatingImages={generatingImages}
           imageCount={imageCount}
