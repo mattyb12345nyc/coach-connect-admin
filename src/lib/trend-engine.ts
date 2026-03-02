@@ -171,9 +171,7 @@ async function generateImagesWithGemini(
   const apiKey = getGeminiApiKey();
   const numberOfImages = Math.max(1, Math.min(4, options.numberOfImages ?? 1));
   const enhancedPrompt = buildImagePrompt(prompt, options);
-  const imageSize = options.upscale4k ? '4K' : options.imageSize || '2K';
   const aspectRatio = options.aspectRatio || '16:9';
-  const thinkingLevel = options.thinkingLevel || 'LOW';
 
   const images: string[] = [];
   const textParts: string[] = [];
@@ -193,10 +191,6 @@ async function generateImagesWithGemini(
               responseModalities: ['IMAGE'],
               imageConfig: {
                 aspectRatio,
-                imageSize,
-              },
-              thinkingConfig: {
-                thinkingLevel,
               },
             },
           }),
@@ -254,7 +248,7 @@ async function generateImagesWithGeminiFallback(
     let response: Response;
     try {
       response = await fetch(
-        `${GEMINI_API_BASE}/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+        `${GEMINI_API_BASE}/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
