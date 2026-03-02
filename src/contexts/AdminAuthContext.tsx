@@ -72,13 +72,25 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('*, stores(store_name, store_number)')
+          .select('*')
           .eq('id', session.user.id)
           .single();
 
         if (profile) {
+          let storeName: string | null = null;
+          let storeNumber: string | null = null;
+          if (profile.store_id) {
+            const { data: store } = await supabase
+              .from('stores')
+              .select('store_name, store_number')
+              .eq('id', profile.store_id)
+              .single();
+            storeName = store?.store_name ?? null;
+            storeNumber = store?.store_number ?? null;
+          }
+
           const role = profile.role as AdminRole;
           const roleLevel = ROLE_LEVEL[role] ?? 0;
           setState({
@@ -91,8 +103,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
               role,
               status: profile.status,
               store_id: profile.store_id,
-              store_name: profile.stores?.store_name ?? null,
-              store_number: profile.stores?.store_number ?? null,
+              store_name: storeName,
+              store_number: storeNumber,
               avatar_url: profile.avatar_url,
             },
             role,
