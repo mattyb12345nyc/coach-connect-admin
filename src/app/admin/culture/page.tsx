@@ -656,7 +656,8 @@ export default function CultureFeedPage() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload.error || 'Image generation failed');
+        const detail = payload?.diagnostics ? ` (${payload.diagnostics})` : '';
+        throw new Error((payload.error || 'Image generation failed') + detail);
       }
       const updatedCandidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
       if (updatedCandidates.length > 0) {
@@ -667,10 +668,11 @@ export default function CultureFeedPage() {
       const generatedCount = Number(payload?.generatedCount || 0);
       const failedCount = Number(payload?.failedCount || 0);
       const totalImagesGenerated = Number(payload?.totalImagesGenerated || generatedCount);
+      const diagnostics = payload?.diagnostics ? ` (${payload.diagnostics})` : '';
       toast.success(
         failedCount > 0
-          ? `Generated ${totalImagesGenerated} image(s) across ${generatedCount} trend(s), ${failedCount} failed`
-          : `Generated ${totalImagesGenerated} image(s)`
+          ? `Generated ${totalImagesGenerated} image(s) across ${generatedCount} trend(s), ${failedCount} failed${diagnostics}`
+          : `Generated ${totalImagesGenerated} image(s)${diagnostics}`
       );
       await fetchCandidates();
     } catch (err: unknown) {

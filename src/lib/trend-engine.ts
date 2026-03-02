@@ -151,7 +151,7 @@ function buildImagePrompt(prompt: string, options: GeminiImageOptions): string {
 async function generateImagesWithGemini(
   prompt: string,
   options: GeminiImageOptions = {}
-): Promise<{ images: string[]; textParts: string[] }> {
+): Promise<{ images: string[]; textParts: string[]; attemptLabel: string }> {
   const apiKey = getGeminiApiKey();
   const numberOfImages = Math.max(1, Math.min(4, options.numberOfImages ?? 1));
   const enableGrounding = Boolean(options.enableSearchGrounding || options.realWorldAccuracy);
@@ -189,7 +189,13 @@ async function generateImagesWithGemini(
     }
   );
 
-  if (!response.ok) return { images: [], textParts: [] };
+  if (!response.ok) {
+    return {
+      images: [],
+      textParts: [`Primary Gemini request failed with status ${response.status}`],
+      attemptLabel: 'gemini-3.1-with-tools',
+    };
+  }
 
   const payload = await response.json();
   const candidates = payload?.candidates || [];
@@ -209,7 +215,58 @@ async function generateImagesWithGemini(
     }
   }
 
-  return { images, textParts };
+  return { images, textParts, attemptLabel: 'gemini-3.1-with-tools' };
+}
+
+async function generateImagesWithGeminiFallback(
+  prompt: string,
+  options: GeminiImageOptions = {}
+): Promise<{ images: string[]; textParts: string[]; attemptLabel: string }> {
+  const apiKey = getGeminiApiKey();
+  const numberOfImages = Math.max(1, Math.min(4, options.numberOfImages ?? 1));
+  const enhancedPrompt = buildImagePrompt(prompt, options);
+  const response = await fetch(
+    `${GEMINI_API_BASE}/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: enhancedPrompt }] }],
+        generationConfig: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          number_of_images: numberOfImages,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    return {
+      images: [],
+      textParts: [`Fallback Gemini request failed with status ${response.status}`],
+      attemptLabel: 'gemini-2.0-fallback',
+    };
+  }
+
+  const payload = await response.json();
+  const candidates = payload?.candidates || [];
+  const images: string[] = [];
+  const textParts: string[] = [];
+
+  for (const candidate of candidates) {
+    const parts = candidate?.content?.parts || [];
+    for (const part of parts) {
+      const mime = part?.inlineData?.mimeType;
+      const data = part?.inlineData?.data;
+      if (mime?.startsWith('image/') && data) {
+        images.push(`data:${mime};base64,${data}`);
+      } else if (typeof part?.text === 'string') {
+        textParts.push(part.text);
+      }
+    }
+  }
+
+  return { images, textParts, attemptLabel: 'gemini-2.0-fallback' };
 }
 
 export async function generateTrendCandidates(selections: TrendSelections): Promise<GeneratedTrendCandidate[]> {
@@ -220,8 +277,39 @@ export async function generateCandidateImages(
   imagePrompt: string,
   options: GeminiImageOptions = {}
 ): Promise<string[]> {
-  const result = await generateImagesWithGemini(imagePrompt, options);
-  return result.images;
+  const primary = await generateImagesWithGemini(imagePrompt, options);
+  if (primary.images.length > 0) return primary.images;
+  const fallback = await generateImagesWithGeminiFallback(imagePrompt, options);
+  return fallback.images;
+}
+
+export async function generateCandidateImagesDetailed(
+  imagePrompt: string,
+  options: GeminiImageOptions = {}
+): Promise<{ images: string[]; diagnostics: string }> {
+  const primary = await generateImagesWithGemini(imagePrompt, options);
+  if (primary.images.length > 0) {
+    return {
+      images: primary.images,
+      diagnostics: `${primary.attemptLabel}: ${primary.images.length} image(s)`,
+    };
+  }
+
+  const fallback = await generateImagesWithGeminiFallback(imagePrompt, options);
+  if (fallback.images.length > 0) {
+    return {
+      images: fallback.images,
+      diagnostics: `${primary.attemptLabel} returned no images; ${fallback.attemptLabel} generated ${fallback.images.length} image(s)`,
+    };
+  }
+
+  const detail = [...primary.textParts, ...fallback.textParts].filter(Boolean).slice(0, 3).join(' | ');
+  return {
+    images: [],
+    diagnostics:
+      detail ||
+      `${primary.attemptLabel} and ${fallback.attemptLabel} returned no image data`,
+  };
 }
 
 export async function generateCandidateImage(

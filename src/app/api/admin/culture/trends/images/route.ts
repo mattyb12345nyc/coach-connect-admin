@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase';
 import { canManageScope, getRequestAdminContext } from '@/lib/admin-permissions';
-import { generateCandidateImages } from '@/lib/trend-engine';
+import { generateCandidateImagesDetailed } from '@/lib/trend-engine';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,16 +41,16 @@ export async function POST(request: NextRequest) {
 
     const updates = await Promise.all(
       candidates.map(async (candidate) => {
-        const generatedImages =
+        const detailedResult =
           candidate.image_url
-            ? [candidate.image_url]
-            : await generateCandidateImages(candidate.image_prompt || candidate.title, {
+            ? { images: [candidate.image_url], diagnostics: 'existing image reused' }
+            : await generateCandidateImagesDetailed(candidate.image_prompt || candidate.title, {
                 numberOfImages: Number(numberOfImages) || 1,
                 enableSearchGrounding: Boolean(enableSearchGrounding),
                 realWorldAccuracy: Boolean(realWorldAccuracy),
                 upscale4k: Boolean(upscale4k),
               });
-        const imageUrl = generatedImages[0] || null;
+        const imageUrl = detailedResult.images[0] || null;
         const { data, error } = await supabase
           .from('culture_trend_candidates')
           .update({ image_url: imageUrl })
@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
         if (error) throw error;
         return {
           ...data,
-          generated_image_count: generatedImages.length,
+          generated_image_count: detailedResult.images.length,
+          image_diagnostics: detailedResult.diagnostics,
         };
       })
     );
@@ -72,6 +73,12 @@ export async function POST(request: NextRequest) {
       0
     );
 
+    const diagnostics = updates
+      .map((candidate) => candidate.image_diagnostics)
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(' | ');
+
     if (generatedCount === 0) {
       return NextResponse.json(
         {
@@ -80,6 +87,7 @@ export async function POST(request: NextRequest) {
           generatedCount,
           failedCount,
           totalImagesGenerated,
+          diagnostics,
         },
         { status: 422 }
       );
@@ -90,6 +98,7 @@ export async function POST(request: NextRequest) {
       generatedCount,
       failedCount,
       totalImagesGenerated,
+      diagnostics,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Image generation failed' }, { status: 500 });
