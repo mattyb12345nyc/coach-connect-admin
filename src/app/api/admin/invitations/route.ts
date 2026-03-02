@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     const inviteUrl = `${MAIN_APP_URL}?invite=${token}`;
 
     const { error: authError } = await supabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `https://coach-connect-demo.netlify.app/invite?token=${token}`,
+      redirectTo: inviteUrl,
     });
 
     if (authError) {
