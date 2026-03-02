@@ -1174,8 +1174,18 @@ export default function CultureFeedPage() {
     }
   };
 
+  const triggerProcessing = useCallback(() => {
+    fetch('/api/admin/culture/trends/images/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-process-secret': 'internal' },
+      body: JSON.stringify({ imageOptions: { numberOfImages: 1, enableSearchGrounding: realWorldAccuracy, realWorldAccuracy, upscale4k } }),
+    }).catch(() => {});
+  }, [realWorldAccuracy, upscale4k]);
+
   useEffect(() => {
     if (pollingIds.length === 0) return;
+
+    let hasTriggeredProcess = false;
 
     const poll = async () => {
       try {
@@ -1190,9 +1200,15 @@ export default function CultureFeedPage() {
           return { ...c, image_url: update.image_url ?? c.image_url, image_status: update.image_status, image_error: update.image_error };
         }));
 
-        const stillBusy = statusList.filter(
-          (s: { image_status: string }) => s.image_status === 'pending' || s.image_status === 'processing'
-        );
+        const stillPending = statusList.filter((s: { image_status: string }) => s.image_status === 'pending');
+        const stillProcessing = statusList.filter((s: { image_status: string }) => s.image_status === 'processing');
+        const stillBusy = [...stillPending, ...stillProcessing];
+
+        if (stillPending.length > 0 && !hasTriggeredProcess) {
+          hasTriggeredProcess = true;
+          triggerProcessing();
+        }
+
         if (stillBusy.length === 0) {
           setPollingIds([]);
           const completed = statusList.filter((s: { image_status: string }) => s.image_status === 'completed').length;
@@ -1200,12 +1216,18 @@ export default function CultureFeedPage() {
           if (completed > 0 || failed > 0) {
             toast.success(`Images done: ${completed} completed${failed > 0 ? `, ${failed} failed` : ''}`);
           }
+          await fetchCandidates();
           return;
         }
 
-        pollTimerRef.current = setTimeout(poll, 3000);
+        if (stillPending.length > 0 && stillProcessing.length === 0) {
+          hasTriggeredProcess = false;
+          triggerProcessing();
+        }
+
+        pollTimerRef.current = setTimeout(poll, 4000);
       } catch {
-        pollTimerRef.current = setTimeout(poll, 5000);
+        pollTimerRef.current = setTimeout(poll, 6000);
       }
     };
 
@@ -1214,7 +1236,7 @@ export default function CultureFeedPage() {
     return () => {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
-  }, [pollingIds]);
+  }, [pollingIds, triggerProcessing, fetchCandidates]);
 
   // ─── Render ───
 
