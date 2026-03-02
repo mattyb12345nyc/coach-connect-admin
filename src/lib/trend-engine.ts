@@ -169,69 +169,63 @@ async function generateImagesWithGemini(
 ): Promise<{ images: string[]; textParts: string[]; attemptLabel: string }> {
   const apiKey = getGeminiApiKey();
   const numberOfImages = Math.max(1, Math.min(4, options.numberOfImages ?? 1));
-  const enableGrounding = Boolean(options.enableSearchGrounding || options.realWorldAccuracy);
   const enhancedPrompt = buildImagePrompt(prompt, options);
   const imageSize = options.upscale4k ? '4K' : options.imageSize || '2K';
   const aspectRatio = options.aspectRatio || '16:9';
   const thinkingLevel = options.thinkingLevel || 'HIGH';
 
-  const tools: Array<Record<string, object>> = [{ image_generation: {} }];
-  if (enableGrounding) {
-    tools.push({ google_search: {} });
-  }
-
-  const response = await fetch(
-    `${GEMINI_API_BASE}/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: enhancedPrompt }] }],
-        tools,
-        ...(enableGrounding ? { toolConfig: { enableGrounding: true } } : {}),
-        generationConfig: {
-          responseModalities: ['IMAGE'],
-          imageConfig: {
-            aspectRatio,
-            imageSize,
-          },
-          thinkingConfig: {
-            thinkingLevel,
-          },
-          numberOfImages: numberOfImages,
-        },
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorDetail = await parseErrorText(response);
-    return {
-      images: [],
-      textParts: [`Primary Gemini request failed (${errorDetail})`],
-      attemptLabel: 'gemini-3.1-with-tools',
-    };
-  }
-
-  const payload = await response.json();
-  const candidates = payload?.candidates || [];
   const images: string[] = [];
   const textParts: string[] = [];
 
-  for (const candidate of candidates) {
-    const parts = candidate?.content?.parts || [];
-    for (const part of parts) {
-      const mime = part?.inlineData?.mimeType;
-      const data = part?.inlineData?.data;
-      if (mime?.startsWith('image/') && data) {
-        images.push(`data:${mime};base64,${data}`);
-      } else if (typeof part?.text === 'string') {
-        textParts.push(part.text);
+  for (let i = 0; i < numberOfImages; i += 1) {
+    const response = await fetch(
+      `${GEMINI_API_BASE}/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: enhancedPrompt }] }],
+          generationConfig: {
+            responseModalities: ['IMAGE'],
+            imageConfig: {
+              aspectRatio,
+              imageSize,
+            },
+            thinkingConfig: {
+              thinkingLevel,
+            },
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorDetail = await parseErrorText(response);
+      return {
+        images,
+        textParts: [...textParts, `Primary Gemini request failed (${errorDetail})`],
+        attemptLabel: 'gemini-3.1-looped',
+      };
+    }
+
+    const payload = await response.json();
+    const candidates = payload?.candidates || [];
+
+    for (const candidate of candidates) {
+      const parts = candidate?.content?.parts || [];
+      for (const part of parts) {
+        const mime = part?.inlineData?.mimeType;
+        const data = part?.inlineData?.data;
+        if (mime?.startsWith('image/') && data) {
+          images.push(`data:${mime};base64,${data}`);
+        } else if (typeof part?.text === 'string') {
+          textParts.push(part.text);
+        }
       }
     }
   }
 
-  return { images, textParts, attemptLabel: 'gemini-3.1-with-tools' };
+  return { images, textParts, attemptLabel: 'gemini-3.1-looped' };
 }
 
 async function generateImagesWithGeminiFallback(
@@ -241,49 +235,51 @@ async function generateImagesWithGeminiFallback(
   const apiKey = getGeminiApiKey();
   const numberOfImages = Math.max(1, Math.min(4, options.numberOfImages ?? 1));
   const enhancedPrompt = buildImagePrompt(prompt, options);
-  const response = await fetch(
-    `${GEMINI_API_BASE}/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: enhancedPrompt }] }],
-        generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE'],
-          numberOfImages: numberOfImages,
-        },
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorDetail = await parseErrorText(response);
-    return {
-      images: [],
-      textParts: [`Fallback Gemini request failed (${errorDetail})`],
-      attemptLabel: 'gemini-2.0-fallback',
-    };
-  }
-
-  const payload = await response.json();
-  const candidates = payload?.candidates || [];
   const images: string[] = [];
   const textParts: string[] = [];
 
-  for (const candidate of candidates) {
-    const parts = candidate?.content?.parts || [];
-    for (const part of parts) {
-      const mime = part?.inlineData?.mimeType;
-      const data = part?.inlineData?.data;
-      if (mime?.startsWith('image/') && data) {
-        images.push(`data:${mime};base64,${data}`);
-      } else if (typeof part?.text === 'string') {
-        textParts.push(part.text);
+  for (let i = 0; i < numberOfImages; i += 1) {
+    const response = await fetch(
+      `${GEMINI_API_BASE}/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: enhancedPrompt }] }],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorDetail = await parseErrorText(response);
+      return {
+        images,
+        textParts: [...textParts, `Fallback Gemini request failed (${errorDetail})`],
+        attemptLabel: 'gemini-2.0-looped',
+      };
+    }
+
+    const payload = await response.json();
+    const candidates = payload?.candidates || [];
+
+    for (const candidate of candidates) {
+      const parts = candidate?.content?.parts || [];
+      for (const part of parts) {
+        const mime = part?.inlineData?.mimeType;
+        const data = part?.inlineData?.data;
+        if (mime?.startsWith('image/') && data) {
+          images.push(`data:${mime};base64,${data}`);
+        } else if (typeof part?.text === 'string') {
+          textParts.push(part.text);
+        }
       }
     }
   }
 
-  return { images, textParts, attemptLabel: 'gemini-2.0-fallback' };
+  return { images, textParts, attemptLabel: 'gemini-2.0-looped' };
 }
 
 export async function generateTrendCandidates(selections: TrendSelections): Promise<GeneratedTrendCandidate[]> {
