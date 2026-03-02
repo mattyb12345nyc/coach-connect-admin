@@ -148,6 +148,21 @@ function buildImagePrompt(prompt: string, options: GeminiImageOptions): string {
   return parts.join(' ');
 }
 
+async function parseErrorText(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    const message = body?.error?.message || body?.message || JSON.stringify(body);
+    return `${response.status}: ${message}`;
+  } catch {
+    try {
+      const text = await response.text();
+      return `${response.status}: ${text || 'Unknown error'}`;
+    } catch {
+      return `${response.status}: Unknown error`;
+    }
+  }
+}
+
 async function generateImagesWithGemini(
   prompt: string,
   options: GeminiImageOptions = {}
@@ -183,16 +198,17 @@ async function generateImagesWithGemini(
           thinkingConfig: {
             thinkingLevel,
           },
-          number_of_images: numberOfImages,
+          numberOfImages: numberOfImages,
         },
       }),
     }
   );
 
   if (!response.ok) {
+    const errorDetail = await parseErrorText(response);
     return {
       images: [],
-      textParts: [`Primary Gemini request failed with status ${response.status}`],
+      textParts: [`Primary Gemini request failed (${errorDetail})`],
       attemptLabel: 'gemini-3.1-with-tools',
     };
   }
@@ -234,16 +250,17 @@ async function generateImagesWithGeminiFallback(
         contents: [{ parts: [{ text: enhancedPrompt }] }],
         generationConfig: {
           responseModalities: ['TEXT', 'IMAGE'],
-          number_of_images: numberOfImages,
+          numberOfImages: numberOfImages,
         },
       }),
     }
   );
 
   if (!response.ok) {
+    const errorDetail = await parseErrorText(response);
     return {
       images: [],
-      textParts: [`Fallback Gemini request failed with status ${response.status}`],
+      textParts: [`Fallback Gemini request failed (${errorDetail})`],
       attemptLabel: 'gemini-2.0-fallback',
     };
   }
