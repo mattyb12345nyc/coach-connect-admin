@@ -1175,9 +1175,9 @@ export default function CultureFeedPage() {
   };
 
   const triggerProcessing = useCallback(() => {
-    fetch('/api/admin/culture/trends/images/process', {
+    fetch('/api/admin/culture/trends/images/status', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-process-secret': 'internal' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imageOptions: { numberOfImages: 1, enableSearchGrounding: realWorldAccuracy, realWorldAccuracy, upscale4k } }),
     }).catch(() => {});
   }, [realWorldAccuracy, upscale4k]);
