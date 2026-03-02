@@ -16,6 +16,10 @@ export async function POST(request: NextRequest) {
       realWorldAccuracy,
       upscale4k,
     } = await request.json();
+    const requestedImageCount = Math.max(1, Math.min(4, Number(numberOfImages) || 1));
+    // We currently persist a single image URL per candidate, so generating more than one
+    // image per candidate adds latency without improving publish output.
+    const persistedImageCountPerCandidate = 1;
 
     if (!Array.isArray(candidateIds) || candidateIds.length === 0) {
       return NextResponse.json({ error: 'candidateIds must be a non-empty array' }, { status: 400 });
@@ -45,7 +49,7 @@ export async function POST(request: NextRequest) {
           candidate.image_url
             ? { images: [candidate.image_url], diagnostics: 'existing image reused' }
             : await generateCandidateImagesDetailed(candidate.image_prompt || candidate.title, {
-                numberOfImages: Number(numberOfImages) || 1,
+                numberOfImages: persistedImageCountPerCandidate,
                 enableSearchGrounding: Boolean(enableSearchGrounding),
                 realWorldAccuracy: Boolean(realWorldAccuracy),
                 upscale4k: Boolean(upscale4k),
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
           .from('culture_trend_candidates')
           .update({ image_url: imageUrl })
           .eq('id', candidate.id)
-          .select('*')
+          .select('id')
           .single();
         if (error) throw error;
         return {
@@ -66,24 +70,30 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    const generatedCount = updates.filter((candidate) => Boolean(candidate.image_url)).length;
+    const generatedCount = updates.filter((candidate) => Number(candidate.generated_image_count || 0) > 0).length;
     const failedCount = updates.length - generatedCount;
     const totalImagesGenerated = updates.reduce(
       (sum, candidate) => sum + Number(candidate.generated_image_count || 0),
       0
     );
 
-    const diagnostics = updates
+    const baseDiagnostics = updates
       .map((candidate) => candidate.image_diagnostics)
       .filter(Boolean)
       .slice(0, 3)
       .join(' | ');
+    const countDiagnostic =
+      requestedImageCount > persistedImageCountPerCandidate
+        ? `Requested ${requestedImageCount} image(s) per trend; generated ${persistedImageCountPerCandidate} per trend for faster completion`
+        : '';
+    const diagnostics = [countDiagnostic, baseDiagnostics].filter(Boolean).join(' | ');
 
     if (generatedCount === 0) {
       return NextResponse.json(
         {
           error: 'Image provider returned no images for the selected trends',
-          candidates: updates,
+          candidates: [],
+          updatedCandidateIds: updates.map((candidate) => candidate.id),
           generatedCount,
           failedCount,
           totalImagesGenerated,
@@ -94,7 +104,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      candidates: updates,
+      candidates: [],
+      updatedCandidateIds: updates.map((candidate) => candidate.id),
       generatedCount,
       failedCount,
       totalImagesGenerated,
