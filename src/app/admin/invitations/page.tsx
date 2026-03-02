@@ -52,6 +52,7 @@ const ROLE_OPTIONS = [
   { value: 'regional_manager', label: 'Regional Manager' },
   { value: 'admin', label: 'Admin' },
 ];
+const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL || 'https://futureproof.work/coach-connect/register';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
@@ -230,7 +231,7 @@ export default function InvitationsPage() {
   };
 
   const copyInviteLink = async (invitation: Invitation) => {
-    const url = `https://futureproof.work/coach-connect?invite=${invitation.token}`;
+    const url = `${MAIN_APP_URL}?token=${invitation.token}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(invitation.id);

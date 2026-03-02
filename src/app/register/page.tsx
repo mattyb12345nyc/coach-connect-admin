@@ -67,7 +67,7 @@ export default function RegisterPageWrapper() {
 function RegisterPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') || searchParams.get('invite');
 
   const [pageState, setPageState] = useState<PageState>('loading');
   const [invitation, setInvitation] = useState<Invitation | null>(null);
