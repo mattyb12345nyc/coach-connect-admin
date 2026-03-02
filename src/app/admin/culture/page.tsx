@@ -355,6 +355,7 @@ export default function CultureFeedPage() {
   const [trendRegion, setTrendRegion] = useState('US');
   const [trendType, setTrendType] = useState<CultureType>('trend');
   const [trendScope, setTrendScope] = useState<'global' | 'store'>('global');
+  const [wizardStep, setWizardStep] = useState(1);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
 
   const adminHeaders = useMemo<Record<string, string>>(
@@ -654,123 +655,174 @@ export default function CultureFeedPage() {
             </Card>
           </div>
 
-          <Card className="p-4 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Trend Engine</h2>
-                <p className="text-sm text-gray-500">Run a custom Perplexity search to get 7 trends, select one or many, generate images, then approve to publish.</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <Card className="p-5">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Trend Engine Wizard</h2>
+                <p className="text-sm text-gray-500">Answer a few questions, then we fetch 7 trends for review.</p>
               </div>
-              <Button onClick={handleGenerateTrends} disabled={generating}>
-                {generating ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
-                Find 7 Trends
-              </Button>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input value={trendTopic} onChange={(e) => setTrendTopic(e.target.value)} placeholder="Trend topic" />
-              <Input value={trendCustomQuery} onChange={(e) => setTrendCustomQuery(e.target.value)} placeholder="Custom Perplexity search query (optional)" />
-              <Input value={trendAudience} onChange={(e) => setTrendAudience(e.target.value)} placeholder="Audience" />
-              <Input value={trendSeason} onChange={(e) => setTrendSeason(e.target.value)} placeholder="Season" />
-              <Input value={trendRegion} onChange={(e) => setTrendRegion(e.target.value)} placeholder="Region" />
-              <select
-                value={trendType}
-                onChange={(e) => setTrendType(e.target.value as CultureType)}
-                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-              >
-                {TYPE_SELECT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <div className="flex items-center gap-2 mb-4">
+                {[1, 2, 3].map((step) => (
+                  <div
+                    key={step}
+                    className={cn(
+                      'h-8 w-8 rounded-full text-xs font-semibold flex items-center justify-center border',
+                      wizardStep === step
+                        ? 'bg-coach-gold text-white border-coach-gold'
+                        : wizardStep > step
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-white text-gray-400 border-gray-200'
+                    )}
+                  >
+                    {step}
+                  </div>
                 ))}
-              </select>
-            </div>
+              </div>
 
-            {role === 'admin' ? (
-              <div className="mt-3">
-                <Label>Scope</Label>
-                <select
-                  value={trendScope}
-                  onChange={(e) => setTrendScope(e.target.value as 'global' | 'store')}
-                  className="mt-1 w-full md:w-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+              {wizardStep === 1 && (
+                <div className="space-y-3">
+                  <Label>What trend area should we research?</Label>
+                  <Input value={trendTopic} onChange={(e) => setTrendTopic(e.target.value)} placeholder="e.g. luxury handbag styling" />
+                  <Label>Optional custom Perplexity query</Label>
+                  <Input
+                    value={trendCustomQuery}
+                    onChange={(e) => setTrendCustomQuery(e.target.value)}
+                    placeholder="e.g. 2026 Coach accessories social trends in US retail"
+                  />
+                </div>
+              )}
+
+              {wizardStep === 2 && (
+                <div className="space-y-3">
+                  <Label>Who is this content for?</Label>
+                  <Input value={trendAudience} onChange={(e) => setTrendAudience(e.target.value)} placeholder="Audience" />
+                  <Label>Season</Label>
+                  <Input value={trendSeason} onChange={(e) => setTrendSeason(e.target.value)} placeholder="Season" />
+                  <Label>Region</Label>
+                  <Input value={trendRegion} onChange={(e) => setTrendRegion(e.target.value)} placeholder="Region" />
+                </div>
+              )}
+
+              {wizardStep === 3 && (
+                <div className="space-y-3">
+                  <Label>Content Type</Label>
+                  <select
+                    value={trendType}
+                    onChange={(e) => setTrendType(e.target.value as CultureType)}
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                  >
+                    {TYPE_SELECT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+
+                  {role === 'admin' ? (
+                    <>
+                      <Label>Scope</Label>
+                      <select
+                        value={trendScope}
+                        onChange={(e) => setTrendScope(e.target.value as 'global' | 'store')}
+                        className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="global">Global</option>
+                        <option value="store">Store</option>
+                      </select>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500">Manager scope is restricted to your store.</p>
+                  )}
+
+                  <Button onClick={handleGenerateTrends} disabled={generating || !trendTopic.trim()} className="w-full">
+                    {generating ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
+                    Find 7 Trends
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
+                <Button variant="ghost" size="sm" disabled={wizardStep === 1} onClick={() => setWizardStep((s) => Math.max(1, s - 1))}>
+                  Back
+                </Button>
+                <Button size="sm" disabled={wizardStep === 3} onClick={() => setWizardStep((s) => Math.min(3, s + 1))}>
+                  Next
+                </Button>
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-gray-900">Trend Review</h2>
+                <Button
+                  size="sm"
+                  onClick={handleGenerateImagesForSelected}
+                  disabled={generatingImages || selectedCandidateIds.length === 0}
                 >
-                  <option value="global">Global</option>
-                  <option value="store">Store</option>
-                </select>
+                  {generatingImages ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Image className="w-4 h-4 mr-1" />}
+                  Generate Images ({selectedCandidateIds.length})
+                </Button>
               </div>
-            ) : (
-              <p className="mt-3 text-xs text-gray-500">Manager scope is restricted to your store.</p>
-            )}
-          </Card>
 
-          <Card className="p-4 mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900">Pending Trend Candidates</h2>
-              <Button
-                size="sm"
-                onClick={handleGenerateImagesForSelected}
-                disabled={generatingImages || selectedCandidateIds.length === 0}
-              >
-                {generatingImages ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Image className="w-4 h-4 mr-1" />}
-                Generate Images for Selected ({selectedCandidateIds.length})
-              </Button>
-            </div>
-            {loadingCandidates ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading candidates...
-              </div>
-            ) : candidates.length === 0 ? (
-              <p className="text-sm text-gray-500">No pending candidates yet.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {candidates.map((candidate) => (
-                  <Card key={candidate.id} className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedCandidateIds.includes(candidate.id)}
-                          onChange={(e) => toggleCandidateSelection(candidate.id, e.target.checked)}
-                          aria-label={`Select candidate ${candidate.title}`}
-                        />
-                        <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
-                          {candidate.scope_type === 'global' ? 'Global' : 'Store'}
-                        </span>
+              {loadingCandidates ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading candidates...
+                </div>
+              ) : candidates.length === 0 ? (
+                <p className="text-sm text-gray-500">No pending candidates yet. Complete the wizard and click “Find 7 Trends”.</p>
+              ) : (
+                <div className="space-y-3 max-h-[560px] overflow-auto pr-1">
+                  {candidates.map((candidate) => (
+                    <Card key={candidate.id} className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedCandidateIds.includes(candidate.id)}
+                            onChange={(e) => toggleCandidateSelection(candidate.id, e.target.checked)}
+                            aria-label={`Select candidate ${candidate.title}`}
+                          />
+                          <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
+                            {candidate.scope_type === 'global' ? 'Global' : 'Store'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-400">{new Date(candidate.created_at).toLocaleString()}</span>
                       </div>
-                      <span className="text-xs text-gray-400">{new Date(candidate.created_at).toLocaleString()}</span>
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-1">{candidate.title}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{candidate.description}</p>
-                    {candidate.image_url && (
-                      <div
-                        className="h-32 rounded bg-gray-100 bg-cover bg-center mb-3"
-                        style={{ backgroundImage: `url(${candidate.image_url})` }}
-                      />
-                    )}
-                    {!candidate.image_url && (
-                      <p className="text-xs text-amber-700 mb-3">Generate image before approving.</p>
-                    )}
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleApproveCandidate(candidate.id)}
-                        disabled={processingCandidateId === candidate.id || !candidate.image_url}
-                      >
-                        {processingCandidateId === candidate.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRejectCandidate(candidate.id)}
-                        disabled={processingCandidateId === candidate.id}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </Card>
+                      <h3 className="font-semibold text-gray-900 mb-1">{candidate.title}</h3>
+                      <p className="text-sm text-gray-600 mb-2">{candidate.description}</p>
+                      {candidate.image_url && (
+                        <div
+                          className="h-32 rounded bg-gray-100 bg-cover bg-center mb-3"
+                          style={{ backgroundImage: `url(${candidate.image_url})` }}
+                        />
+                      )}
+                      {!candidate.image_url && (
+                        <p className="text-xs text-amber-700 mb-3">Select this trend and generate image before approving.</p>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApproveCandidate(candidate.id)}
+                          disabled={processingCandidateId === candidate.id || !candidate.image_url}
+                        >
+                          {processingCandidateId === candidate.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRejectCandidate(candidate.id)}
+                          disabled={processingCandidateId === candidate.id}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
 
           <Card className="p-3 mb-6">
             <div className="flex rounded-lg bg-gray-100 p-0.5">
