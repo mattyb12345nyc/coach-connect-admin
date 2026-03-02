@@ -848,14 +848,6 @@ function TrendWizardModal({
                         <option value={3}>3 images each</option>
                         <option value={4}>4 images each</option>
                       </select>
-                      <label className="flex items-center gap-1.5 text-gray-600 cursor-pointer">
-                        <input type="checkbox" checked={realWorldAccuracy} onChange={(e) => onRealWorldAccuracyChange(e.target.checked)} className="rounded" />
-                        Grounded
-                      </label>
-                      <label className="flex items-center gap-1.5 text-gray-600 cursor-pointer">
-                        <input type="checkbox" checked={upscale4k} onChange={(e) => onUpscale4kChange(e.target.checked)} className="rounded" />
-                        4K
-                      </label>
                     </div>
                   </div>
 
@@ -898,7 +890,7 @@ function TrendWizardModal({
                             </div>
                             <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
                               {candidate.image_url ? (
-                                <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${candidate.image_url})` }} />
+                                <img src={candidate.image_url} alt={candidate.title} className="w-full h-full object-cover" />
                               ) : isImageBusy ? (
                                 <div className="flex flex-col items-center gap-1">
                                   <Loader2 className="w-5 h-5 animate-spin text-coach-gold" />
