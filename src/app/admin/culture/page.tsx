@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Sparkles,
   Plus,
@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
 type CultureType = 'trend' | 'styling' | 'news';
 type FilterTab = 'all' | CultureType;
@@ -40,6 +41,23 @@ interface CultureItem {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  scope_type?: 'global' | 'store';
+  store_id?: string | null;
+}
+
+interface TrendCandidate {
+  id: string;
+  type: CultureType;
+  category: string;
+  title: string;
+  description: string;
+  image_url: string | null;
+  engagement_text: string | null;
+  scope_type: 'global' | 'store';
+  store_id: string | null;
+  status: 'generated' | 'approved' | 'rejected';
+  created_at: string;
+  image_prompt?: string | null;
 }
 
 type CultureFormData = Omit<CultureItem, 'id' | 'published_at' | 'created_at' | 'updated_at'> & {
@@ -317,18 +335,37 @@ function ContentCard({
 }
 
 export default function CultureFeedPage() {
+  const { user, role, storeId } = useAdminAuth();
   const [items, setItems] = useState<CultureItem[]>([]);
+  const [candidates, setCandidates] = useState<TrendCandidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCandidates, setLoadingCandidates] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generatingImages, setGeneratingImages] = useState(false);
+  const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [editingForm, setEditingForm] = useState<CultureFormData | null>(null);
+  const [trendTopic, setTrendTopic] = useState('luxury handbag styling');
+  const [trendCustomQuery, setTrendCustomQuery] = useState('');
+  const [trendAudience, setTrendAudience] = useState('sales associates');
+  const [trendSeason, setTrendSeason] = useState('current season');
+  const [trendRegion, setTrendRegion] = useState('US');
+  const [trendType, setTrendType] = useState<CultureType>('trend');
+  const [trendScope, setTrendScope] = useState<'global' | 'store'>('global');
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
+
+  const adminHeaders = useMemo<Record<string, string>>(
+    () => (user?.email ? { 'x-admin-email': user.email } : ({} as Record<string, string>)),
+    [user?.email]
+  );
 
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/culture');
+      const res = await fetch('/api/admin/culture', { headers: adminHeaders });
       if (!res.ok) throw new Error('Failed to fetch culture items');
       const data = await res.json();
       setItems(data);
@@ -337,11 +374,32 @@ export default function CultureFeedPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adminHeaders]);
+
+  const fetchCandidates = useCallback(async () => {
+    try {
+      setLoadingCandidates(true);
+      const res = await fetch('/api/admin/culture/trends/candidates?status=generated', {
+        headers: adminHeaders,
+      });
+      if (!res.ok) throw new Error('Failed to fetch candidates');
+      const data = await res.json();
+      setCandidates(data);
+      setSelectedCandidateIds((prev) => prev.filter((id) => data.some((c: TrendCandidate) => c.id === id)));
+    } catch {
+      toast.error('Failed to load trend candidates');
+    } finally {
+      setLoadingCandidates(false);
+    }
+  }, [adminHeaders]);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  useEffect(() => {
+    fetchCandidates();
+  }, [fetchCandidates]);
 
   const filteredItems = activeTab === 'all' ? items : items.filter((i) => i.type === activeTab);
 
@@ -364,7 +422,7 @@ export default function CultureFeedPage() {
 
       const res = await fetch('/api/admin/culture', {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -387,7 +445,7 @@ export default function CultureFeedPage() {
       setDeletingId(id);
       const res = await fetch('/api/admin/culture', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({ id }),
       });
       if (!res.ok) throw new Error('Delete failed');
@@ -405,7 +463,7 @@ export default function CultureFeedPage() {
       setTogglingId(item.id);
       const res = await fetch('/api/admin/culture', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({ id: item.id, is_published: !item.is_published }),
       });
       if (!res.ok) throw new Error('Update failed');
@@ -434,6 +492,119 @@ export default function CultureFeedPage() {
       is_published: item.is_published,
       sort_order: item.sort_order,
     });
+  };
+
+  const handleGenerateTrends = async () => {
+    try {
+      setGenerating(true);
+      const effectiveScope = role === 'manager' ? 'store' : trendScope;
+      const effectiveStoreId = role === 'manager' ? storeId : effectiveScope === 'store' ? storeId : null;
+      const res = await fetch('/api/admin/culture/trends/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        body: JSON.stringify({
+          scopeType: effectiveScope,
+          storeId: effectiveStoreId,
+          selections: {
+            topic: trendTopic,
+            customQuery: trendCustomQuery,
+            audience: trendAudience,
+            season: trendSeason,
+            region: trendRegion,
+            type: trendType,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Trend generation failed');
+      }
+      toast.success('Trend candidates generated');
+      setSelectedCandidateIds([]);
+      await fetchCandidates();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Trend generation failed';
+      toast.error(message);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleApproveCandidate = async (candidateId: string) => {
+    try {
+      setProcessingCandidateId(candidateId);
+      const res = await fetch('/api/admin/culture/trends/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        body: JSON.stringify({ candidateId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Approval failed');
+      }
+      toast.success('Candidate approved and published');
+      await Promise.all([fetchCandidates(), fetchItems()]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Approval failed';
+      toast.error(message);
+    } finally {
+      setProcessingCandidateId(null);
+    }
+  };
+
+  const handleRejectCandidate = async (candidateId: string) => {
+    try {
+      setProcessingCandidateId(candidateId);
+      const res = await fetch('/api/admin/culture/trends/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        body: JSON.stringify({ candidateId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Reject failed');
+      }
+      toast.success('Candidate rejected');
+      await fetchCandidates();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Reject failed';
+      toast.error(message);
+    } finally {
+      setProcessingCandidateId(null);
+    }
+  };
+
+  const toggleCandidateSelection = (candidateId: string, checked: boolean) => {
+    setSelectedCandidateIds((prev) =>
+      checked ? Array.from(new Set([...prev, candidateId])) : prev.filter((id) => id !== candidateId)
+    );
+  };
+
+  const handleGenerateImagesForSelected = async () => {
+    if (!selectedCandidateIds.length) {
+      toast.error('Select at least one trend to generate images');
+      return;
+    }
+
+    try {
+      setGeneratingImages(true);
+      const res = await fetch('/api/admin/culture/trends/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        body: JSON.stringify({ candidateIds: selectedCandidateIds }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Image generation failed');
+      }
+      toast.success('Images generated for selected trends');
+      await fetchCandidates();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Image generation failed';
+      toast.error(message);
+    } finally {
+      setGeneratingImages(false);
+    }
   };
 
   return (
@@ -482,6 +653,124 @@ export default function CultureFeedPage() {
               </div>
             </Card>
           </div>
+
+          <Card className="p-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Trend Engine</h2>
+                <p className="text-sm text-gray-500">Run a custom Perplexity search to get 7 trends, select one or many, generate images, then approve to publish.</p>
+              </div>
+              <Button onClick={handleGenerateTrends} disabled={generating}>
+                {generating ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
+                Find 7 Trends
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input value={trendTopic} onChange={(e) => setTrendTopic(e.target.value)} placeholder="Trend topic" />
+              <Input value={trendCustomQuery} onChange={(e) => setTrendCustomQuery(e.target.value)} placeholder="Custom Perplexity search query (optional)" />
+              <Input value={trendAudience} onChange={(e) => setTrendAudience(e.target.value)} placeholder="Audience" />
+              <Input value={trendSeason} onChange={(e) => setTrendSeason(e.target.value)} placeholder="Season" />
+              <Input value={trendRegion} onChange={(e) => setTrendRegion(e.target.value)} placeholder="Region" />
+              <select
+                value={trendType}
+                onChange={(e) => setTrendType(e.target.value as CultureType)}
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+              >
+                {TYPE_SELECT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {role === 'admin' ? (
+              <div className="mt-3">
+                <Label>Scope</Label>
+                <select
+                  value={trendScope}
+                  onChange={(e) => setTrendScope(e.target.value as 'global' | 'store')}
+                  className="mt-1 w-full md:w-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="global">Global</option>
+                  <option value="store">Store</option>
+                </select>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-gray-500">Manager scope is restricted to your store.</p>
+            )}
+          </Card>
+
+          <Card className="p-4 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900">Pending Trend Candidates</h2>
+              <Button
+                size="sm"
+                onClick={handleGenerateImagesForSelected}
+                disabled={generatingImages || selectedCandidateIds.length === 0}
+              >
+                {generatingImages ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Image className="w-4 h-4 mr-1" />}
+                Generate Images for Selected ({selectedCandidateIds.length})
+              </Button>
+            </div>
+            {loadingCandidates ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading candidates...
+              </div>
+            ) : candidates.length === 0 ? (
+              <p className="text-sm text-gray-500">No pending candidates yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {candidates.map((candidate) => (
+                  <Card key={candidate.id} className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedCandidateIds.includes(candidate.id)}
+                          onChange={(e) => toggleCandidateSelection(candidate.id, e.target.checked)}
+                          aria-label={`Select candidate ${candidate.title}`}
+                        />
+                        <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
+                          {candidate.scope_type === 'global' ? 'Global' : 'Store'}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-400">{new Date(candidate.created_at).toLocaleString()}</span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-1">{candidate.title}</h3>
+                    <p className="text-sm text-gray-600 mb-2">{candidate.description}</p>
+                    {candidate.image_url && (
+                      <div
+                        className="h-32 rounded bg-gray-100 bg-cover bg-center mb-3"
+                        style={{ backgroundImage: `url(${candidate.image_url})` }}
+                      />
+                    )}
+                    {!candidate.image_url && (
+                      <p className="text-xs text-amber-700 mb-3">Generate image before approving.</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveCandidate(candidate.id)}
+                        disabled={processingCandidateId === candidate.id || !candidate.image_url}
+                      >
+                        {processingCandidateId === candidate.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRejectCandidate(candidate.id)}
+                        disabled={processingCandidateId === candidate.id}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </Card>
 
           <Card className="p-3 mb-6">
             <div className="flex rounded-lg bg-gray-100 p-0.5">
