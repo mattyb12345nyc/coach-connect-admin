@@ -3,8 +3,7 @@ import { getAdminClient } from '@/lib/supabase';
 import { generateCandidateImagesDetailed } from '@/lib/trend-engine';
 
 export const dynamic = 'force-dynamic';
-
-const ROUTE_TIME_BUDGET_MS = 20_000;
+export const maxDuration = 60;
 
 function getBaseUrl(request: NextRequest): string {
   const proto = request.headers.get('x-forwarded-proto') || 'https';
@@ -13,8 +12,6 @@ function getBaseUrl(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
-  const routeStart = Date.now();
-
   const secret = request.headers.get('x-process-secret');
   const expected = process.env.IMAGE_PROCESS_SECRET || 'internal';
   if (secret !== expected) {
@@ -36,46 +33,40 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('image_status', 'pending')
       .order('image_requested_at', { ascending: true })
-      .limit(10);
+      .limit(1);
 
     if (fetchErr) throw fetchErr;
     if (!pending?.length) {
       return NextResponse.json({ processed: 0, remaining: 0 });
     }
 
-    let processed = 0;
-    for (const candidate of pending) {
-      const elapsed = Date.now() - routeStart;
-      if (elapsed > ROUTE_TIME_BUDGET_MS) break;
+    const candidate = pending[0];
 
+    await supabase
+      .from('culture_trend_candidates')
+      .update({ image_status: 'processing' })
+      .eq('id', candidate.id);
+
+    try {
+      const result = await generateCandidateImagesDetailed(
+        candidate.image_prompt || candidate.title,
+        { numberOfImages: 1, ...imageOptions }
+      );
+      const imageUrl = result.images[0] || null;
       await supabase
         .from('culture_trend_candidates')
-        .update({ image_status: 'processing' })
+        .update({
+          image_url: imageUrl,
+          image_status: imageUrl ? 'completed' : 'failed',
+          image_error: imageUrl ? null : (result.diagnostics || 'No image returned'),
+        })
         .eq('id', candidate.id);
-
-      try {
-        const result = await generateCandidateImagesDetailed(
-          candidate.image_prompt || candidate.title,
-          { numberOfImages: 1, ...imageOptions }
-        );
-        const imageUrl = result.images[0] || null;
-        await supabase
-          .from('culture_trend_candidates')
-          .update({
-            image_url: imageUrl,
-            image_status: imageUrl ? 'completed' : 'failed',
-            image_error: imageUrl ? null : (result.diagnostics || 'No image returned'),
-          })
-          .eq('id', candidate.id);
-        processed++;
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Image generation failed';
-        await supabase
-          .from('culture_trend_candidates')
-          .update({ image_status: 'failed', image_error: msg })
-          .eq('id', candidate.id);
-        processed++;
-      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Image generation failed';
+      await supabase
+        .from('culture_trend_candidates')
+        .update({ image_status: 'failed', image_error: msg })
+        .eq('id', candidate.id);
     }
 
     const { count: remainingCount } = await supabase
@@ -92,7 +83,7 @@ export async function POST(request: NextRequest) {
       }).catch(() => {});
     }
 
-    return NextResponse.json({ processed, remaining: remainingCount || 0 });
+    return NextResponse.json({ processed: 1, remaining: remainingCount || 0 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Processing failed';
     return NextResponse.json({ error: msg }, { status: 500 });

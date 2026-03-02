@@ -36,7 +36,7 @@ export interface GeminiImageOptions {
 
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-const GEMINI_TIMEOUT_MS = 15_000;
+const GEMINI_TIMEOUT_MS = 50_000;
 
 function getPerplexityApiKey() {
   const key = process.env.PERPLEXITY_API_KEY;
@@ -173,7 +173,7 @@ async function generateImagesWithGemini(
   const enhancedPrompt = buildImagePrompt(prompt, options);
   const imageSize = options.upscale4k ? '4K' : options.imageSize || '2K';
   const aspectRatio = options.aspectRatio || '16:9';
-  const thinkingLevel = options.thinkingLevel || 'HIGH';
+  const thinkingLevel = options.thinkingLevel || 'LOW';
 
   const images: string[] = [];
   const textParts: string[] = [];
@@ -254,7 +254,7 @@ async function generateImagesWithGeminiFallback(
     let response: Response;
     try {
       response = await fetch(
-        `${GEMINI_API_BASE}/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
+        `${GEMINI_API_BASE}/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -272,7 +272,7 @@ async function generateImagesWithGeminiFallback(
       return {
         images,
         textParts: [...textParts, `Fallback Gemini request timed out or failed (${msg})`],
-        attemptLabel: 'gemini-2.0-looped',
+        attemptLabel: 'gemini-2.0-flash-exp',
       };
     }
 
@@ -281,7 +281,7 @@ async function generateImagesWithGeminiFallback(
       return {
         images,
         textParts: [...textParts, `Fallback Gemini request failed (${errorDetail})`],
-        attemptLabel: 'gemini-2.0-looped',
+        attemptLabel: 'gemini-2.0-flash-exp',
       };
     }
 
@@ -302,7 +302,7 @@ async function generateImagesWithGeminiFallback(
     }
   }
 
-  return { images, textParts, attemptLabel: 'gemini-2.0-looped' };
+  return { images, textParts, attemptLabel: 'gemini-2.0-flash-exp' };
 }
 
 export async function generateTrendCandidates(selections: TrendSelections): Promise<GeneratedTrendCandidate[]> {

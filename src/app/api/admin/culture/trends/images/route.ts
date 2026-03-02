@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase';
 import { canManageScope, getRequestAdminContext } from '@/lib/admin-permissions';
-import { generateCandidateImagesDetailed } from '@/lib/trend-engine';
 
 export const dynamic = 'force-dynamic';
-
-const ROUTE_TIME_BUDGET_MS = 20_000;
 
 function getBaseUrl(request: NextRequest): string {
   const proto = request.headers.get('x-forwarded-proto') || 'https';
@@ -14,7 +11,6 @@ function getBaseUrl(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
-  const routeStart = Date.now();
   try {
     const context = await getRequestAdminContext(request);
     const supabase = getAdminClient();
@@ -48,13 +44,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const imageOptions = {
-      numberOfImages: 1,
-      enableSearchGrounding: Boolean(enableSearchGrounding),
-      realWorldAccuracy: Boolean(realWorldAccuracy),
-      upscale4k: Boolean(upscale4k),
-    };
-
     const toProcess = candidates.filter((c) => !c.image_url);
     const alreadyDone = candidates.filter((c) => !!c.image_url);
 
@@ -78,59 +67,24 @@ export async function POST(request: NextRequest) {
       .update({ image_status: 'pending', image_error: null, image_requested_at: new Date().toISOString() })
       .in('id', toProcess.map((c) => c.id));
 
-    let completedInline = 0;
-    for (const candidate of toProcess) {
-      const elapsed = Date.now() - routeStart;
-      if (elapsed > ROUTE_TIME_BUDGET_MS) break;
+    const imageOptions = {
+      numberOfImages: 1,
+      enableSearchGrounding: Boolean(enableSearchGrounding),
+      realWorldAccuracy: Boolean(realWorldAccuracy),
+      upscale4k: Boolean(upscale4k),
+    };
 
-      await supabase
-        .from('culture_trend_candidates')
-        .update({ image_status: 'processing' })
-        .eq('id', candidate.id);
-
-      try {
-        const result = await generateCandidateImagesDetailed(
-          candidate.image_prompt || candidate.title,
-          imageOptions
-        );
-        const imageUrl = result.images[0] || null;
-        await supabase
-          .from('culture_trend_candidates')
-          .update({
-            image_url: imageUrl,
-            image_status: imageUrl ? 'completed' : 'failed',
-            image_error: imageUrl ? null : (result.diagnostics || 'No image returned'),
-          })
-          .eq('id', candidate.id);
-        if (imageUrl) completedInline++;
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Image generation failed';
-        await supabase
-          .from('culture_trend_candidates')
-          .update({ image_status: 'failed', image_error: msg })
-          .eq('id', candidate.id);
-      }
-    }
-
-    const { count: remainingCount } = await supabase
-      .from('culture_trend_candidates')
-      .select('id', { count: 'exact', head: true })
-      .in('id', toProcess.map((c) => c.id))
-      .in('image_status', ['pending']);
-
-    if (remainingCount && remainingCount > 0) {
-      const baseUrl = getBaseUrl(request);
-      const processSecret = process.env.IMAGE_PROCESS_SECRET || 'internal';
-      fetch(`${baseUrl}/api/admin/culture/trends/images/process`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-process-secret': processSecret },
-        body: JSON.stringify({ imageOptions }),
-      }).catch(() => {});
-    }
+    const baseUrl = getBaseUrl(request);
+    const processSecret = process.env.IMAGE_PROCESS_SECRET || 'internal';
+    fetch(`${baseUrl}/api/admin/culture/trends/images/process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-process-secret': processSecret },
+      body: JSON.stringify({ imageOptions }),
+    }).catch(() => {});
 
     return NextResponse.json({
-      queued: (remainingCount || 0),
-      completed: alreadyDone.length + completedInline,
+      queued: toProcess.length,
+      completed: alreadyDone.length,
       candidateIds: candidates.map((c) => c.id),
     });
   } catch (e: unknown) {
