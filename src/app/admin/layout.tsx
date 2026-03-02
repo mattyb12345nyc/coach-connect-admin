@@ -86,7 +86,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const { user, role, loading } = useAdminAuth();
+  const { user, role, loading, signOut } = useAdminAuth();
+
+  const isLoginPage = pathname === '/admin/login';
 
   useEffect(() => {
     const expanded = new Set<string>();
@@ -123,7 +125,22 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   const badge = ROLE_BADGE[role];
 
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
   if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-coach-gold" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/admin/login';
+    }
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-coach-gold" />
@@ -140,14 +157,23 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Access Required</h1>
         <p className="text-gray-500 max-w-md mb-6">
           The admin dashboard is only available to store managers and administrators.
+          You are signed in as <strong>{user.email}</strong> with the <strong>{role.replace('_', ' ')}</strong> role.
         </p>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-coach-gold text-white hover:bg-coach-gold/90 transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Back to App
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={signOut}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            Sign Out
+          </button>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-coach-gold text-white hover:bg-coach-gold/90 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to App
+          </Link>
+        </div>
       </div>
     );
   }
@@ -315,9 +341,17 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <div className="px-3 py-2">
                 <p className="text-sm font-medium text-gray-900 truncate">{user.display_name}</p>
                 <p className="text-xs text-gray-500 truncate">{user.store_name || user.email}</p>
-                <span className={cn('inline-block mt-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full', badge.className)}>
-                  {badge.label}
-                </span>
+                <div className="flex items-center justify-between mt-1">
+                  <span className={cn('text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full', badge.className)}>
+                    {badge.label}
+                  </span>
+                  <button
+                    onClick={signOut}
+                    className="text-xs text-gray-400 hover:text-red-600 transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </div>
               </div>
             </div>
           )}

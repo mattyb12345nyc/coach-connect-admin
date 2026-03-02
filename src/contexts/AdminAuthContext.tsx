@@ -19,13 +19,17 @@ interface AdminUser {
   avatar_url: string | null;
 }
 
-interface AdminAuthState {
+interface AdminAuthData {
   user: AdminUser | null;
   role: AdminRole;
   storeId: string | null;
   loading: boolean;
   isAdmin: boolean;
   isManager: boolean;
+}
+
+interface AdminAuthState extends AdminAuthData {
+  signOut: () => Promise<void>;
 }
 
 const AdminAuthContext = createContext<AdminAuthState>({
@@ -35,6 +39,7 @@ const AdminAuthContext = createContext<AdminAuthState>({
   loading: true,
   isAdmin: true,
   isManager: false,
+  signOut: async () => {},
 });
 
 const ROLE_LEVEL: Record<AdminRole, number> = {
@@ -46,7 +51,7 @@ const ROLE_LEVEL: Record<AdminRole, number> = {
 };
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AdminAuthState>({
+  const [state, setState] = useState<AdminAuthData>({
     user: null,
     role: 'admin',
     storeId: null,
@@ -146,8 +151,23 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const signOut = async () => {
+    const supabase = getSupabase();
+    await supabase.auth.signOut();
+    setState(prev => ({
+      ...prev,
+      user: null,
+      role: 'associate' as AdminRole,
+      storeId: null,
+      isAdmin: false,
+      isManager: false,
+    }));
+  };
+
+  const value = { ...state, signOut };
+
   return (
-    <AdminAuthContext.Provider value={state}>
+    <AdminAuthContext.Provider value={value}>
       {children}
     </AdminAuthContext.Provider>
   );
