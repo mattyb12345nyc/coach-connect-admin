@@ -11,6 +11,9 @@ function getBaseUrl(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
+  // #region agent log
+  const _dl = (loc: string, msg: string, data: Record<string, unknown>) => { try { const fs = require('fs'); fs.appendFileSync('/tmp/debug-99cc76.log', JSON.stringify({sessionId:'99cc76',location:loc,message:msg,data,timestamp:Date.now()})+'\n'); } catch {} };
+  // #endregion
   try {
     const context = await getRequestAdminContext(request);
     const supabase = getAdminClient();
@@ -22,6 +25,10 @@ export async function POST(request: NextRequest) {
       upscale4k,
     } = await request.json();
 
+    // #region agent log
+    _dl('images/route.ts:POST:entry', 'Kick-off received', { candidateIds, candidateIdCount: candidateIds?.length, hypothesisId: 'H1' });
+    // #endregion
+
     if (!Array.isArray(candidateIds) || candidateIds.length === 0) {
       return NextResponse.json({ error: 'candidateIds must be a non-empty array' }, { status: 400 });
     }
@@ -32,8 +39,15 @@ export async function POST(request: NextRequest) {
       .in('id', candidateIds)
       .eq('status', 'generated');
 
+    // #region agent log
+    _dl('images/route.ts:POST:db-query', 'DB query for generated candidates', { foundCount: candidates?.length ?? 0, fetchError: fetchError?.message ?? null, candidateStatuses: candidates?.map((c: any) => ({ id: c.id, status: c.status, image_status: c.image_status })), hypothesisId: 'H1' });
+    // #endregion
+
     if (fetchError) throw fetchError;
     if (!candidates?.length) {
+      // #region agent log
+      _dl('images/route.ts:POST:no-eligible', 'No eligible candidates', { requestedIds: candidateIds, hypothesisId: 'H1' });
+      // #endregion
       return NextResponse.json({ error: 'No eligible candidates found' }, { status: 404 });
     }
 
