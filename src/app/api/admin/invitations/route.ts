@@ -34,8 +34,9 @@ export async function POST(request: NextRequest) {
     const supabase = getAdminClient();
     const body = await request.json();
     const { email, first_name, last_name, role, store_id, region, invited_by } = body;
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
-    if (!email) {
+    if (!normalizedEmail) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from('invites')
       .select('id')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .eq('status', 'pending')
       .single();
 
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     const { data: invite, error: insertError } = await supabase
       .from('invites')
       .insert({
-        email,
+        email: normalizedEmail,
         first_name: first_name || null,
         last_name: last_name || null,
         role: inviteRole,
@@ -99,16 +100,43 @@ export async function POST(request: NextRequest) {
 
     const inviteUrl = `${MAIN_APP_URL}?token=${token}`;
 
-    const { error: authError } = await supabase.auth.admin.inviteUserByEmail(email, {
+    const { error: authError } = await supabase.auth.admin.inviteUserByEmail(normalizedEmail, {
       redirectTo: inviteUrl,
     });
 
     if (authError) {
+      const isExistingUser =
+        authError.message.toLowerCase().includes('already') &&
+        authError.message.toLowerCase().includes('register');
+
+      let existingUserActivated = false;
+      if (isExistingUser) {
+        const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({
+            status: 'active',
+            role: inviteRole,
+            store_id: inviteRole === 'admin' || inviteRole === 'regional_manager' ? null : store_id || null,
+          })
+          .ilike('email', normalizedEmail)
+          .eq('status', 'pending');
+
+        if (!profileUpdateError) {
+          existingUserActivated = true;
+          await supabase
+            .from('invites')
+            .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+            .eq('id', invite.id)
+            .eq('status', 'pending');
+        }
+      }
+
       return NextResponse.json({
         invitation: invite,
         invite_url: inviteUrl,
         email_sent: false,
         email_error: authError.message,
+        existing_user_activated: existingUserActivated,
       }, { status: 201 });
     }
 
@@ -131,9 +159,8 @@ export async function DELETE(request: NextRequest) {
 
     const { error } = await supabase
       .from('invites')
-      .update({ status: 'revoked' })
-      .eq('id', id)
-      .eq('status', 'pending');
+      .delete()
+      .eq('id', id);
 
     if (error) throw error;
     return NextResponse.json({ success: true });

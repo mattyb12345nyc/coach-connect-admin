@@ -70,7 +70,7 @@ export default function InvitationsPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
 
@@ -210,23 +210,21 @@ export default function InvitationsPage() {
     }
   };
 
-  const handleRevoke = async (id: string) => {
-    setRevokingId(id);
+  const handleDeleteInvite = async (id: string) => {
+    setDeletingId(id);
     try {
       const res = await fetch('/api/admin/invitations', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      if (!res.ok) throw new Error('Failed to revoke invitation');
-      setInvitations(prev => prev.map(i =>
-        i.id === id ? { ...i, status: 'revoked' as const } : i
-      ));
-      toast.success('Invitation revoked');
+      if (!res.ok) throw new Error('Failed to delete invitation');
+      setInvitations(prev => prev.filter(i => i.id !== id));
+      toast.success('Invitation deleted');
     } catch {
-      toast.error('Failed to revoke invitation');
+      toast.error('Failed to delete invitation');
     } finally {
-      setRevokingId(null);
+      setDeletingId(null);
     }
   };
 
@@ -555,16 +553,16 @@ export default function InvitationsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleRevoke(invitation.id)}
-                            disabled={revokingId === invitation.id}
+                            onClick={() => handleDeleteInvite(invitation.id)}
+                            disabled={deletingId === invitation.id}
                             className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
                           >
-                            {revokingId === invitation.id ? (
+                            {deletingId === invitation.id ? (
                               <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
                             ) : (
                               <Trash2 className="w-3.5 h-3.5 mr-1" />
                             )}
-                            Revoke
+                            Delete
                           </Button>
                         </div>
                       )}
