@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server';
 import { getAdminRole } from '@/lib/admin-auth';
 
-export type ScopeType = 'global' | 'store';
+export type ScopeType = 'global' | 'region' | 'store';
 
 export interface RequestAdminContext {
   role: 'associate' | 'manager' | 'admin';
@@ -20,7 +20,8 @@ export async function getRequestAdminContext(request: NextRequest): Promise<Requ
 export function canManageScope(
   context: RequestAdminContext,
   scopeType: ScopeType,
-  targetStoreId: string | null
+  targetStoreId: string | null,
+  targetRegion?: string | null
 ): { allowed: boolean; reason?: string } {
   if (context.role === 'admin') return { allowed: true };
 
@@ -30,6 +31,9 @@ export function canManageScope(
     }
     if (!context.storeId || !targetStoreId || context.storeId !== targetStoreId) {
       return { allowed: false, reason: 'Managers can only manage posts for their own store' };
+    }
+    if (targetRegion) {
+      return { allowed: false, reason: 'Managers cannot target regions' };
     }
     return { allowed: true };
   }

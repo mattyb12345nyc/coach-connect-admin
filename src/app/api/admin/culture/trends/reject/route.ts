@@ -23,7 +23,12 @@ export async function POST(request: NextRequest) {
     if (candidateError) throw candidateError;
     if (!candidate) return NextResponse.json({ error: 'Candidate not found' }, { status: 404 });
 
-    const permission = canManageScope(context, candidate.scope_type, candidate.store_id);
+    const permission = canManageScope(
+      context,
+      candidate.scope_type,
+      candidate.store_id,
+      candidate.store_region
+    );
     if (!permission.allowed) {
       return NextResponse.json({ error: permission.reason }, { status: 403 });
     }

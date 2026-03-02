@@ -9,27 +9,58 @@ export async function GET(request: NextRequest) {
     const context = await getRequestAdminContext(request);
     const supabase = getAdminClient();
     const audience = request.nextUrl.searchParams.get('audience');
-
     let query = supabase
       .from('culture_feed_items')
       .select('*')
       .order('sort_order');
 
     if (audience === 'user') {
-      if (context.storeId) {
-        query = query
-          .eq('is_published', true)
-          .or(`scope_type.eq.global,and(scope_type.eq.store,store_id.eq.${context.storeId})`);
-      } else {
-        query = query.eq('is_published', true).eq('scope_type', 'global');
-      }
-    } else if (context.role === 'manager') {
-      query = query.or(`scope_type.eq.global,and(scope_type.eq.store,store_id.eq.${context.storeId})`);
+      query = query.eq('is_published', true);
     }
 
     const { data, error } = await query;
     if (error) throw error;
-    return NextResponse.json(data);
+
+    let filtered = data ?? [];
+
+    if (context.role === 'manager') {
+      let userRegion: string | null = null;
+      if (context.storeId) {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('region')
+          .eq('id', context.storeId)
+          .single();
+        userRegion = store?.region || null;
+      }
+      filtered = filtered.filter(
+        (item: any) =>
+          item.scope_type === 'global' ||
+          (item.scope_type === 'region' && !!userRegion && item.store_region === userRegion) ||
+          (item.scope_type === 'store' && item.store_id && context.storeId && item.store_id === context.storeId)
+      );
+    }
+
+    if (audience === 'user') {
+      if (!context.storeId) {
+        filtered = filtered.filter((item: any) => item.scope_type === 'global');
+      } else {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('region')
+          .eq('id', context.storeId)
+          .single();
+        const userRegion = store?.region || null;
+        filtered = filtered.filter(
+          (item: any) =>
+            item.scope_type === 'global' ||
+            (item.scope_type === 'region' && userRegion && item.store_region === userRegion) ||
+            (item.scope_type === 'store' && item.store_id === context.storeId)
+        );
+      }
+    }
+
+    return NextResponse.json(filtered);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
@@ -42,15 +73,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const scopeType = context.role === 'manager' ? 'store' : body.scope_type || 'global';
     const storeId = context.role === 'manager' ? context.storeId : body.store_id || null;
+    const storeRegion =
+      scopeType === 'region'
+        ? body.store_region || null
+        : scopeType === 'store'
+        ? null
+        : null;
 
-    const permission = canManageScope(context, scopeType, storeId);
+    const permission = canManageScope(context, scopeType, storeId, storeRegion);
     if (!permission.allowed) {
       return NextResponse.json({ error: permission.reason }, { status: 403 });
     }
 
     const { data, error } = await supabase
       .from('culture_feed_items')
-      .insert({ ...body, scope_type: scopeType, store_id: storeId })
+      .insert({
+        ...body,
+        scope_type: scopeType,
+        store_id: scopeType === 'store' ? storeId : null,
+        store_region: scopeType === 'region' ? storeRegion : null,
+      })
       .select()
       .single();
     if (error) throw error;
@@ -69,7 +111,7 @@ export async function PUT(request: NextRequest) {
 
     const { data: existing, error: existingError } = await supabase
       .from('culture_feed_items')
-      .select('scope_type, store_id')
+      .select('scope_type, store_id, store_region')
       .eq('id', id)
       .single();
 
@@ -78,8 +120,10 @@ export async function PUT(request: NextRequest) {
     const targetScope = updates.scope_type || existing.scope_type;
     const targetStoreId =
       updates.store_id === undefined ? existing.store_id : updates.store_id;
+    const targetRegion =
+      updates.store_region === undefined ? existing.store_region : updates.store_region;
 
-    const permission = canManageScope(context, targetScope, targetStoreId);
+    const permission = canManageScope(context, targetScope, targetStoreId, targetRegion);
     if (!permission.allowed) {
       return NextResponse.json({ error: permission.reason }, { status: 403 });
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
 type TableName = 'focus_cards' | 'cultural_moments' | 'whats_new';
 
@@ -34,6 +35,9 @@ interface FocusCard {
   cta_action: string;
   is_active: boolean;
   sort_order: number;
+  scope_type: 'global' | 'region' | 'store';
+  store_id: string | null;
+  store_region: string | null;
 }
 
 interface CulturalMoment {
@@ -45,6 +49,9 @@ interface CulturalMoment {
   action_text: string;
   sort_order: number;
   is_active: boolean;
+  scope_type: 'global' | 'region' | 'store';
+  store_id: string | null;
+  store_region: string | null;
 }
 
 interface WhatsNewItem {
@@ -57,6 +64,16 @@ interface WhatsNewItem {
   icon_color: string;
   sort_order: number;
   is_active: boolean;
+  scope_type: 'global' | 'region' | 'store';
+  store_id: string | null;
+  store_region: string | null;
+}
+
+interface StoreSummary {
+  id: string;
+  store_number: string;
+  store_name: string;
+  region: string;
 }
 
 const EMPTY_FOCUS_CARD: Omit<FocusCard, 'id'> = {
@@ -67,6 +84,9 @@ const EMPTY_FOCUS_CARD: Omit<FocusCard, 'id'> = {
   cta_action: '',
   is_active: true,
   sort_order: 0,
+  scope_type: 'global',
+  store_id: null,
+  store_region: null,
 };
 
 const EMPTY_CULTURAL_MOMENT: Omit<CulturalMoment, 'id'> = {
@@ -77,6 +97,9 @@ const EMPTY_CULTURAL_MOMENT: Omit<CulturalMoment, 'id'> = {
   action_text: '',
   sort_order: 0,
   is_active: true,
+  scope_type: 'global',
+  store_id: null,
+  store_region: null,
 };
 
 const EMPTY_WHATS_NEW: Omit<WhatsNewItem, 'id'> = {
@@ -88,12 +111,15 @@ const EMPTY_WHATS_NEW: Omit<WhatsNewItem, 'id'> = {
   icon_color: '',
   sort_order: 0,
   is_active: true,
+  scope_type: 'global',
+  store_id: null,
+  store_region: null,
 };
 
-async function apiRequest(method: string, body?: Record<string, unknown>) {
+async function apiRequest(method: string, headers: Record<string, string>, body?: Record<string, unknown>) {
   const opts: RequestInit = {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
   };
   if (body) opts.body = JSON.stringify(body);
 
@@ -107,6 +133,92 @@ async function apiRequest(method: string, body?: Record<string, unknown>) {
     throw new Error(err.error || `Request failed (${res.status})`);
   }
   return res.json();
+}
+
+function TargetingFields({
+  data,
+  onChange,
+  role,
+  storeId,
+  stores,
+}: {
+  data: { scope_type: 'global' | 'region' | 'store'; store_id: string | null; store_region: string | null };
+  onChange: (next: { scope_type: 'global' | 'region' | 'store'; store_id: string | null; store_region: string | null }) => void;
+  role: 'associate' | 'manager' | 'admin';
+  storeId: string | null;
+  stores: StoreSummary[];
+}) {
+  const regions = Array.from(new Set(stores.map((store) => store.region).filter(Boolean))).sort();
+  const isManager = role === 'manager';
+  const scopeValue = isManager ? 'store' : data.scope_type;
+  const selectedStoreId = isManager ? storeId : data.store_id;
+
+  return (
+    <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white/70 p-3 space-y-3">
+      <Label>Target Audience</Label>
+      <select
+        value={scopeValue}
+        onChange={(e) =>
+          onChange({
+            scope_type: e.target.value as 'global' | 'region' | 'store',
+            store_id: e.target.value === 'store' ? data.store_id : null,
+            store_region: e.target.value === 'region' ? data.store_region : null,
+          })
+        }
+        disabled={isManager}
+        className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm disabled:bg-gray-100"
+      >
+        <option value="global">Global</option>
+        <option value="region">Region</option>
+        <option value="store">Individual Store</option>
+      </select>
+
+      {scopeValue === 'region' && !isManager && (
+        <select
+          value={data.store_region || ''}
+          onChange={(e) =>
+            onChange({
+              scope_type: 'region',
+              store_id: null,
+              store_region: e.target.value || null,
+            })
+          }
+          className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+        >
+          <option value="">Select region</option>
+          {regions.map((region) => (
+            <option key={region} value={region}>
+              {region}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {scopeValue === 'store' && (
+        <select
+          value={selectedStoreId || ''}
+          onChange={(e) =>
+            onChange({
+              scope_type: 'store',
+              store_id: e.target.value || null,
+              store_region: null,
+            })
+          }
+          disabled={isManager}
+          className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm disabled:bg-gray-100"
+        >
+          <option value="">Select store</option>
+          {stores.map((store) => (
+            <option key={store.id} value={store.id}>
+              {store.store_number} - {store.store_name}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {isManager && <p className="text-xs text-gray-500">Managers can only publish to their own store.</p>}
+    </div>
+  );
 }
 
 function ActiveToggle({
@@ -187,12 +299,18 @@ function FocusCardForm({
   onSave,
   onCancel,
   saving,
+  role,
+  storeId,
+  stores,
 }: {
   data: Omit<FocusCard, 'id'> & { id?: string };
   onChange: (d: Omit<FocusCard, 'id'> & { id?: string }) => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
+  role: 'associate' | 'manager' | 'admin';
+  storeId: string | null;
+  stores: StoreSummary[];
 }) {
   return (
     <Card className="p-5 border-coach-gold/30 bg-amber-50/30">
@@ -225,6 +343,13 @@ function FocusCardForm({
           <Label>Active</Label>
           <ActiveToggle active={data.is_active} onChange={(v) => onChange({ ...data, is_active: v })} />
         </div>
+        <TargetingFields
+          data={{ scope_type: data.scope_type, store_id: data.store_id, store_region: data.store_region }}
+          onChange={(targeting) => onChange({ ...data, ...targeting })}
+          role={role}
+          storeId={storeId}
+          stores={stores}
+        />
       </div>
       <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-200">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
@@ -246,12 +371,18 @@ function CulturalMomentForm({
   onSave,
   onCancel,
   saving,
+  role,
+  storeId,
+  stores,
 }: {
   data: Omit<CulturalMoment, 'id'> & { id?: string };
   onChange: (d: Omit<CulturalMoment, 'id'> & { id?: string }) => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
+  role: 'associate' | 'manager' | 'admin';
+  storeId: string | null;
+  stores: StoreSummary[];
 }) {
   return (
     <Card className="p-5 border-coach-gold/30 bg-amber-50/30">
@@ -284,6 +415,13 @@ function CulturalMomentForm({
           <Label>Active</Label>
           <ActiveToggle active={data.is_active} onChange={(v) => onChange({ ...data, is_active: v })} />
         </div>
+        <TargetingFields
+          data={{ scope_type: data.scope_type, store_id: data.store_id, store_region: data.store_region }}
+          onChange={(targeting) => onChange({ ...data, ...targeting })}
+          role={role}
+          storeId={storeId}
+          stores={stores}
+        />
       </div>
       <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-200">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
@@ -305,12 +443,18 @@ function WhatsNewForm({
   onSave,
   onCancel,
   saving,
+  role,
+  storeId,
+  stores,
 }: {
   data: Omit<WhatsNewItem, 'id'> & { id?: string };
   onChange: (d: Omit<WhatsNewItem, 'id'> & { id?: string }) => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
+  role: 'associate' | 'manager' | 'admin';
+  storeId: string | null;
+  stores: StoreSummary[];
 }) {
   return (
     <Card className="p-5 border-coach-gold/30 bg-amber-50/30">
@@ -347,6 +491,13 @@ function WhatsNewForm({
           <Label>Active</Label>
           <ActiveToggle active={data.is_active} onChange={(v) => onChange({ ...data, is_active: v })} />
         </div>
+        <TargetingFields
+          data={{ scope_type: data.scope_type, store_id: data.store_id, store_region: data.store_region }}
+          onChange={(targeting) => onChange({ ...data, ...targeting })}
+          role={role}
+          storeId={storeId}
+          stores={stores}
+        />
       </div>
       <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-200">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
@@ -414,9 +565,11 @@ function ItemRow({
 }
 
 export default function TodayDashboardPage() {
+  const { user, role, storeId } = useAdminAuth();
   const [focusCards, setFocusCards] = useState<FocusCard[]>([]);
   const [culturalMoments, setCulturalMoments] = useState<CulturalMoment[]>([]);
   const [whatsNew, setWhatsNew] = useState<WhatsNewItem[]>([]);
+  const [stores, setStores] = useState<StoreSummary[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -434,10 +587,15 @@ export default function TodayDashboardPage() {
     data: Record<string, any>;
   } | null>(null);
 
+  const adminHeaders = useMemo<Record<string, string>>(
+    () => (user?.email ? { 'x-admin-email': user.email } : ({} as Record<string, string>)),
+    [user?.email]
+  );
+
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/today');
+      const res = await fetch('/api/admin/today', { headers: adminHeaders });
       if (!res.ok) throw new Error('Failed to load data');
       const data = await res.json();
       setFocusCards(data.focus_cards ?? []);
@@ -449,11 +607,26 @@ export default function TodayDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adminHeaders]);
+
+  const fetchStores = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/stores?status=OPEN', { headers: adminHeaders });
+      if (!res.ok) return;
+      const data = await res.json();
+      setStores(data ?? []);
+    } catch {
+      // Non-blocking for Today content management
+    }
+  }, [adminHeaders]);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  useEffect(() => {
+    fetchStores();
+  }, [fetchStores]);
 
   const toggleSection = (table: TableName) => {
     setExpanded((prev) => ({ ...prev, [table]: !prev[table] }));
@@ -482,7 +655,7 @@ export default function TodayDashboardPage() {
       setSaving(true);
       const isEdit = !!data.id;
       const method = isEdit ? 'PUT' : 'POST';
-      await apiRequest(method, { table, ...data });
+      await apiRequest(method, adminHeaders, { table, ...data });
       toast.success(isEdit ? 'Item updated' : 'Item created');
       setEditingForm(null);
       await fetchAll();
@@ -497,7 +670,7 @@ export default function TodayDashboardPage() {
   const handleDelete = async (table: TableName, id: string) => {
     try {
       setDeletingId(id);
-      await apiRequest('DELETE', { table, id });
+      await apiRequest('DELETE', adminHeaders, { table, id });
       toast.success('Item deleted');
       await fetchAll();
     } catch (err: unknown) {
@@ -515,7 +688,7 @@ export default function TodayDashboardPage() {
   ) => {
     try {
       setTogglingId(id);
-      await apiRequest('PUT', { table, id, is_active: !currentActive });
+      await apiRequest('PUT', adminHeaders, { table, id, is_active: !currentActive });
       await fetchAll();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Toggle failed';
@@ -572,6 +745,9 @@ export default function TodayDashboardPage() {
                       onSave={handleSave}
                       onCancel={() => setEditingForm(null)}
                       saving={saving}
+                      role={role}
+                      storeId={storeId}
+                      stores={stores}
                     />
                   )}
                   {focusCards.length === 0 && !isEditingTable('focus_cards') && (
@@ -586,6 +762,9 @@ export default function TodayDashboardPage() {
                         onSave={handleSave}
                         onCancel={() => setEditingForm(null)}
                         saving={saving}
+                        role={role}
+                        storeId={storeId}
+                        stores={stores}
                       />
                     ) : (
                       <ItemRow
@@ -624,6 +803,9 @@ export default function TodayDashboardPage() {
                       onSave={handleSave}
                       onCancel={() => setEditingForm(null)}
                       saving={saving}
+                      role={role}
+                      storeId={storeId}
+                      stores={stores}
                     />
                   )}
                   {culturalMoments.length === 0 && !isEditingTable('cultural_moments') && (
@@ -638,6 +820,9 @@ export default function TodayDashboardPage() {
                         onSave={handleSave}
                         onCancel={() => setEditingForm(null)}
                         saving={saving}
+                        role={role}
+                        storeId={storeId}
+                        stores={stores}
                       />
                     ) : (
                       <ItemRow
@@ -676,6 +861,9 @@ export default function TodayDashboardPage() {
                       onSave={handleSave}
                       onCancel={() => setEditingForm(null)}
                       saving={saving}
+                      role={role}
+                      storeId={storeId}
+                      stores={stores}
                     />
                   )}
                   {whatsNew.length === 0 && !isEditingTable('whats_new') && (
@@ -690,6 +878,9 @@ export default function TodayDashboardPage() {
                         onSave={handleSave}
                         onCancel={() => setEditingForm(null)}
                         saving={saving}
+                        role={role}
+                        storeId={storeId}
+                        stores={stores}
                       />
                     ) : (
                       <ItemRow

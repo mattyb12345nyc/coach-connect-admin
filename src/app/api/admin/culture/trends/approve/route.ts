@@ -32,7 +32,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const permission = canManageScope(context, candidate.scope_type, candidate.store_id);
+    const permission = canManageScope(
+      context,
+      candidate.scope_type,
+      candidate.store_id,
+      candidate.store_region
+    );
     if (!permission.allowed) {
       return NextResponse.json({ error: permission.reason }, { status: 403 });
     }
@@ -51,6 +56,7 @@ export async function POST(request: NextRequest) {
         sort_order: 0,
         scope_type: candidate.scope_type,
         store_id: candidate.store_id,
+        store_region: candidate.store_region,
         source_candidate_id: candidate.id,
       })
       .select()

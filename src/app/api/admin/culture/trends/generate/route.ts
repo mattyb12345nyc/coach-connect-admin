@@ -9,6 +9,7 @@ interface GenerateRequestBody {
   selections: TrendSelections;
   scopeType?: ScopeType;
   storeId?: string | null;
+  storeRegion?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -23,14 +24,16 @@ export async function POST(request: NextRequest) {
 
     const requestedScope = body.scopeType ?? 'global';
     const requestedStoreId = body.storeId ?? null;
+    const requestedRegion = body.storeRegion ?? null;
 
-    const permission = canManageScope(context, requestedScope, requestedStoreId);
+    const permission = canManageScope(context, requestedScope, requestedStoreId, requestedRegion);
     if (!permission.allowed) {
       return NextResponse.json({ error: permission.reason }, { status: 403 });
     }
 
     const finalScope: ScopeType = context.role === 'manager' ? 'store' : requestedScope;
     const finalStoreId = context.role === 'manager' ? context.storeId : requestedStoreId;
+    const finalRegion = context.role === 'manager' ? null : requestedRegion;
 
     const generated = await generateTrendCandidates({
       ...body.selections,
@@ -49,6 +52,7 @@ export async function POST(request: NextRequest) {
       selection_payload: candidate.selectionPayload,
       scope_type: finalScope,
       store_id: finalStoreId,
+      store_region: finalScope === 'region' ? finalRegion : null,
       generated_by: context.userId,
       trend_source: 'perplexity',
       status: 'generated',

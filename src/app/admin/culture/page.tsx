@@ -53,11 +53,19 @@ interface TrendCandidate {
   description: string;
   image_url: string | null;
   engagement_text: string | null;
-  scope_type: 'global' | 'store';
+  scope_type: 'global' | 'region' | 'store';
   store_id: string | null;
+  store_region?: string | null;
   status: 'generated' | 'approved' | 'rejected';
   created_at: string;
   image_prompt?: string | null;
+}
+
+interface StoreSummary {
+  id: string;
+  store_number: string;
+  store_name: string;
+  region: string;
 }
 
 type CultureFormData = Omit<CultureItem, 'id' | 'published_at' | 'created_at' | 'updated_at'> & {
@@ -354,7 +362,10 @@ export default function CultureFeedPage() {
   const [trendSeason, setTrendSeason] = useState('current season');
   const [trendRegion, setTrendRegion] = useState('US');
   const [trendType, setTrendType] = useState<CultureType>('trend');
-  const [trendScope, setTrendScope] = useState<'global' | 'store'>('global');
+  const [trendScope, setTrendScope] = useState<'global' | 'region' | 'store'>('global');
+  const [trendStoreId, setTrendStoreId] = useState<string>('');
+  const [trendRegionTarget, setTrendRegionTarget] = useState<string>('');
+  const [stores, setStores] = useState<StoreSummary[]>([]);
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
 
@@ -394,6 +405,17 @@ export default function CultureFeedPage() {
     }
   }, [adminHeaders]);
 
+  const fetchStores = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/stores?status=OPEN', { headers: adminHeaders });
+      if (!res.ok) return;
+      const data = await res.json();
+      setStores(data ?? []);
+    } catch {
+      // best-effort, non-blocking
+    }
+  }, [adminHeaders]);
+
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
@@ -401,6 +423,10 @@ export default function CultureFeedPage() {
   useEffect(() => {
     fetchCandidates();
   }, [fetchCandidates]);
+
+  useEffect(() => {
+    fetchStores();
+  }, [fetchStores]);
 
   const filteredItems = activeTab === 'all' ? items : items.filter((i) => i.type === activeTab);
 
@@ -499,13 +525,29 @@ export default function CultureFeedPage() {
     try {
       setGenerating(true);
       const effectiveScope = role === 'manager' ? 'store' : trendScope;
-      const effectiveStoreId = role === 'manager' ? storeId : effectiveScope === 'store' ? storeId : null;
+      const effectiveStoreId =
+        role === 'manager' ? storeId : effectiveScope === 'store' ? trendStoreId || null : null;
+      const effectiveRegion =
+        role === 'manager' ? null : effectiveScope === 'region' ? trendRegionTarget || null : null;
+
+      if (effectiveScope === 'store' && !effectiveStoreId) {
+        toast.error('Select a store for store-targeted trends');
+        setGenerating(false);
+        return;
+      }
+      if (effectiveScope === 'region' && !effectiveRegion) {
+        toast.error('Select a region for region-targeted trends');
+        setGenerating(false);
+        return;
+      }
+
       const res = await fetch('/api/admin/culture/trends/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...adminHeaders },
         body: JSON.stringify({
           scopeType: effectiveScope,
           storeId: effectiveStoreId,
+          storeRegion: effectiveRegion,
           selections: {
             topic: trendTopic,
             customQuery: trendCustomQuery,
@@ -520,7 +562,16 @@ export default function CultureFeedPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Trend generation failed');
       }
-      toast.success('Trend candidates generated');
+      const payload = await res.json().catch(() => ({}));
+      const createdCandidates = Array.isArray(payload?.candidates) ? payload.candidates : [];
+      if (createdCandidates.length > 0) {
+        setCandidates(createdCandidates);
+      }
+      toast.success(
+        createdCandidates.length > 0
+          ? `Generated ${createdCandidates.length} trend candidates`
+          : 'Trend request completed, refreshing candidate list'
+      );
       setSelectedCandidateIds([]);
       await fetchCandidates();
     } catch (err: unknown) {
@@ -722,12 +773,43 @@ export default function CultureFeedPage() {
                       <Label>Scope</Label>
                       <select
                         value={trendScope}
-                        onChange={(e) => setTrendScope(e.target.value as 'global' | 'store')}
+                        onChange={(e) => setTrendScope(e.target.value as 'global' | 'region' | 'store')}
                         className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
                       >
                         <option value="global">Global</option>
+                        <option value="region">Region</option>
                         <option value="store">Store</option>
                       </select>
+                      {trendScope === 'region' && (
+                        <select
+                          value={trendRegionTarget}
+                          onChange={(e) => setTrendRegionTarget(e.target.value)}
+                          className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                        >
+                          <option value="">Select region</option>
+                          {Array.from(new Set(stores.map((s) => s.region).filter(Boolean)))
+                            .sort()
+                            .map((region) => (
+                              <option key={region} value={region}>
+                                {region}
+                              </option>
+                            ))}
+                        </select>
+                      )}
+                      {trendScope === 'store' && (
+                        <select
+                          value={trendStoreId}
+                          onChange={(e) => setTrendStoreId(e.target.value)}
+                          className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                        >
+                          <option value="">Select store</option>
+                          {stores.map((store) => (
+                            <option key={store.id} value={store.id}>
+                              {store.store_number} - {store.store_name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </>
                   ) : (
                     <p className="text-xs text-gray-500">Manager scope is restricted to your store.</p>
@@ -769,7 +851,12 @@ export default function CultureFeedPage() {
                   Loading candidates...
                 </div>
               ) : candidates.length === 0 ? (
-                <p className="text-sm text-gray-500">No pending candidates yet. Complete the wizard and click “Find 7 Trends”.</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500">No pending candidates yet. Complete the wizard and click “Find 7 Trends”.</p>
+                  <p className="text-xs text-amber-700">
+                    If trends are not appearing, verify migration `005_culture_trend_engine.sql` is applied and API keys are configured in Netlify.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-3 max-h-[560px] overflow-auto pr-1">
                   {candidates.map((candidate) => (
@@ -783,7 +870,11 @@ export default function CultureFeedPage() {
                             aria-label={`Select candidate ${candidate.title}`}
                           />
                           <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
-                            {candidate.scope_type === 'global' ? 'Global' : 'Store'}
+                            {candidate.scope_type === 'global'
+                              ? 'Global'
+                              : candidate.scope_type === 'region'
+                              ? `Region: ${candidate.store_region || 'Unknown'}`
+                              : 'Store'}
                           </span>
                         </div>
                         <span className="text-xs text-gray-400">{new Date(candidate.created_at).toLocaleString()}</span>
