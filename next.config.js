@@ -56,7 +56,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://customgpt.ai https://*.customgpt.ai http://localhost:* http://127.0.0.1:*",
+            value: "frame-ancestors 'self' https://customgpt.ai https://*.customgpt.ai https://futureproof.work https://*.futureproof.work http://localhost:* http://127.0.0.1:*",
           },
         ],
       },
