@@ -144,6 +144,14 @@ const MARKET_OPTIONS = [
   { value: 'Global', label: 'Global' },
 ];
 
+function buildCandidateImageSrc(candidateId: string): string {
+  return `/api/admin/culture/trends/images/file/${candidateId}?entity=candidate`;
+}
+
+function buildFeedImageSrc(feedItemId: string): string {
+  return `/api/admin/culture/trends/images/file/${feedItemId}?entity=feed`;
+}
+
 // ─── Shared Small Components ───
 
 function PublishToggle({
@@ -274,14 +282,15 @@ function ContentCard({
   toggling: boolean;
 }) {
   const typeConfig = TYPE_CONFIG[item.type];
+  const imageSrc = item.image_url ? buildFeedImageSrc(item.id) : null;
   return (
     <Card className="overflow-hidden group transition-all hover:shadow-md">
       <div
         className="relative h-44 bg-gray-100 flex items-center justify-center"
-        style={item.image_url ? { backgroundImage: `url(${item.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        style={imageSrc ? { backgroundImage: `url(${imageSrc})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
-        {!item.image_url && <Image className="h-10 w-10 text-gray-300" />}
-        {item.image_url && <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />}
+        {!imageSrc && <Image className="h-10 w-10 text-gray-300" />}
+        {imageSrc && <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />}
         <div className="absolute top-3 left-3 flex items-center gap-2">
           <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', typeConfig.bg, typeConfig.text)}>{typeConfig.label}</span>
           {item.category && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-white/90 text-gray-700">{item.category}</span>}
@@ -292,14 +301,14 @@ function ContentCard({
             {item.is_published ? 'Live' : 'Draft'}
           </span>
         </div>
-        {item.image_url && item.title && (
+        {imageSrc && item.title && (
           <div className="absolute bottom-3 left-3 right-3">
             <h3 className="text-sm font-semibold text-white leading-tight line-clamp-2 drop-shadow-sm">{item.title}</h3>
           </div>
         )}
       </div>
       <div className="p-4">
-        {!item.image_url && <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 mb-1">{item.title}</h3>}
+        {!imageSrc && <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 mb-1">{item.title}</h3>}
         {item.description && <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">{item.description}</p>}
         {item.engagement_text && <p className="text-xs font-medium text-coach-mahogany mb-3">{item.engagement_text}</p>}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
@@ -860,6 +869,7 @@ function TrendWizardModal({
                       const isProcessing = processingCandidateId === candidate.id;
                       const imgStatus = candidate.image_status || 'none';
                       const isImageBusy = imgStatus === 'pending' || imgStatus === 'processing';
+                      const candidateImageSrc = candidate.image_url ? buildCandidateImageSrc(candidate.id) : null;
                       return (
                         <div
                           key={candidate.id}
@@ -891,12 +901,12 @@ function TrendWizardModal({
                               <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{candidate.description}</p>
                             </div>
                             <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden relative group/thumb">
-                              {candidate.image_url ? (
+                              {candidateImageSrc ? (
                                 <>
-                                  <img src={candidate.image_url} alt={candidate.title} className="w-full h-full object-cover" />
+                                  <img src={candidateImageSrc} alt={candidate.title} className="w-full h-full object-cover" />
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); setPreviewImage({ url: candidate.image_url!, title: candidate.title }); }}
+                                    onClick={(e) => { e.stopPropagation(); setPreviewImage({ url: candidateImageSrc, title: candidate.title }); }}
                                     className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-all"
                                   >
                                     <ZoomIn className="w-5 h-5 text-white drop-shadow" />
