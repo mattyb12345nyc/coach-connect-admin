@@ -34,9 +34,36 @@ export interface GeminiImageOptions {
   thinkingLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
+import { getAdminClient } from '@/lib/supabase';
+
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const GEMINI_TIMEOUT_MS = 50_000;
+const STORAGE_BUCKET = 'culture-images';
+
+async function uploadImageToStorage(base64Data: string, mimeType: string): Promise<string | null> {
+  try {
+    const supabase = getAdminClient();
+    const ext = mimeType.includes('png') ? 'png' : 'jpg';
+    const filename = `trends/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filename, buffer, { contentType: mimeType, upsert: false });
+
+    if (error) {
+      console.error('Storage upload failed:', error.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filename);
+    return urlData?.publicUrl || null;
+  } catch (err) {
+    console.error('Storage upload error:', err);
+    return null;
+  }
+}
 
 function getPerplexityApiKey() {
   const key = process.env.PERPLEXITY_API_KEY;
@@ -223,7 +250,12 @@ async function generateImagesWithGemini(
         const mime = part?.inlineData?.mimeType;
         const data = part?.inlineData?.data;
         if (mime?.startsWith('image/') && data) {
-          images.push(`data:${mime};base64,${data}`);
+          const publicUrl = await uploadImageToStorage(data, mime);
+          if (publicUrl) {
+            images.push(publicUrl);
+          } else {
+            textParts.push('Image generated but storage upload failed');
+          }
         } else if (typeof part?.text === 'string') {
           textParts.push(part.text);
         }
@@ -288,7 +320,12 @@ async function generateImagesWithGeminiFallback(
         const mime = part?.inlineData?.mimeType;
         const data = part?.inlineData?.data;
         if (mime?.startsWith('image/') && data) {
-          images.push(`data:${mime};base64,${data}`);
+          const publicUrl = await uploadImageToStorage(data, mime);
+          if (publicUrl) {
+            images.push(publicUrl);
+          } else {
+            textParts.push('Image generated but storage upload failed');
+          }
         } else if (typeof part?.text === 'string') {
           textParts.push(part.text);
         }
