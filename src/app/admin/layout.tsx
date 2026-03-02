@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -17,6 +17,9 @@ import {
   Shield,
   Loader2,
   Mail,
+  History,
+  Settings,
+  UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminAuthProvider, useAdminAuth, type AdminRole } from '@/contexts/AdminAuthContext';
@@ -27,17 +30,40 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   href: string;
   minRole: 'manager' | 'admin';
+  children?: NavItem[];
 }
 
-const navItems: NavItem[] = [
-  { id: 'today', label: 'Today Dashboard', icon: LayoutDashboard, href: '/admin/today', minRole: 'manager' },
-  { id: 'chat', label: 'Coach Chat', icon: MessageSquare, href: '/admin/chat', minRole: 'admin' },
-  { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice', minRole: 'manager' },
-  { id: 'community', label: 'Community', icon: Users, href: '/admin/community', minRole: 'manager' },
-  { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture', minRole: 'manager' },
-  { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'manager' },
-  { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'manager' },
-  { id: 'invitations', label: 'Invitations', icon: Mail, href: '/admin/invitations', minRole: 'manager' },
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
+  {
+    label: 'App Content',
+    items: [
+      { id: 'today', label: 'Today Dashboard', icon: LayoutDashboard, href: '/admin/today', minRole: 'manager' },
+      {
+        id: 'chat-group', label: 'Coach Chat', icon: MessageSquare, href: '/admin/chat', minRole: 'admin',
+        children: [
+          { id: 'chat-history', label: 'Chat History', icon: History, href: '/admin/chat-history', minRole: 'manager' },
+        ],
+      },
+      { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice', minRole: 'manager' },
+      { id: 'community', label: 'Community', icon: Users, href: '/admin/community', minRole: 'manager' },
+      { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture', minRole: 'manager' },
+      { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'manager' },
+      { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'manager' },
+      { id: 'invitations', label: 'Invitations', icon: Mail, href: '/admin/invitations', minRole: 'manager' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { id: 'profile', label: 'Profile', icon: UserCircle, href: '/admin/profile', minRole: 'manager' },
+      { id: 'settings', label: 'Settings', icon: Settings, href: '/admin/settings', minRole: 'manager' },
+    ],
+  },
 ];
 
 const ROLE_LEVEL: Record<AdminRole, number> = {
@@ -55,11 +81,41 @@ const ROLE_BADGE: Record<AdminRole, { label: string; className: string }> = {
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const { user, role, loading } = useAdminAuth();
 
-  const filteredNav = navItems.filter(
-    (item) => ROLE_LEVEL[role] >= ROLE_LEVEL[item.minRole]
-  );
+  useEffect(() => {
+    const expanded = new Set<string>();
+    for (const section of navSections) {
+      for (const item of section.items) {
+        if (item.children) {
+          const isChildActive = item.children.some(c => pathname === c.href);
+          const isParentActive = pathname === item.href;
+          if (isChildActive || isParentActive) {
+            expanded.add(item.id);
+          }
+        }
+      }
+    }
+    setExpandedGroups(expanded);
+  }, [pathname]);
+
+  const toggleGroup = (id: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const filterItems = (items: NavItem[]): NavItem[] =>
+    items
+      .filter(item => ROLE_LEVEL[role] >= ROLE_LEVEL[item.minRole])
+      .map(item => ({
+        ...item,
+        children: item.children ? filterItems(item.children) : undefined,
+      }));
 
   const badge = ROLE_BADGE[role];
 
@@ -147,27 +203,105 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-            <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-              App Content
-            </p>
-            {filteredNav.map((item) => {
-              const active = pathname === item.href;
+          <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+            {navSections.map((section) => {
+              const sectionItems = filterItems(section.items);
+              if (sectionItems.length === 0) return null;
               return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                    active
-                      ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  )}
-                >
-                  <item.icon className={cn('w-4.5 h-4.5', active ? 'text-amber-600' : 'text-gray-400')} />
-                  {item.label}
-                </Link>
+                <div key={section.label}>
+                  <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                    {section.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {sectionItems.map((item) => {
+                      if (item.children && item.children.length > 0) {
+                        const isExpanded = expandedGroups.has(item.id);
+                        const parentActive = pathname === item.href;
+                        const childActive = item.children.some(c => pathname === c.href);
+                        const groupActive = parentActive || childActive;
+                        return (
+                          <div key={item.id}>
+                            <div className="flex items-center">
+                              <Link
+                                href={item.href}
+                                onClick={() => setSidebarOpen(false)}
+                                className={cn(
+                                  'flex-1 flex items-center gap-3 px-3 py-2 rounded-l-lg text-sm font-medium transition-colors',
+                                  parentActive
+                                    ? 'bg-amber-50 text-amber-800 border border-r-0 border-amber-200'
+                                    : groupActive
+                                      ? 'text-amber-700 bg-amber-50/50'
+                                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                )}
+                              >
+                                <item.icon className={cn('w-4.5 h-4.5', groupActive ? 'text-amber-600' : 'text-gray-400')} />
+                                {item.label}
+                              </Link>
+                              <button
+                                onClick={() => toggleGroup(item.id)}
+                                className={cn(
+                                  'px-2 py-2 rounded-r-lg transition-colors',
+                                  parentActive
+                                    ? 'bg-amber-50 border border-l-0 border-amber-200'
+                                    : groupActive
+                                      ? 'bg-amber-50/50'
+                                      : 'hover:bg-gray-50'
+                                )}
+                              >
+                                <ChevronLeft className={cn(
+                                  'w-3.5 h-3.5 transition-transform',
+                                  isExpanded ? '-rotate-90' : 'rotate-180',
+                                  groupActive ? 'text-amber-600' : 'text-gray-400'
+                                )} />
+                              </button>
+                            </div>
+                            {isExpanded && (
+                              <div className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-gray-100 pl-2">
+                                {item.children.map((child) => {
+                                  const childIsActive = pathname === child.href;
+                                  return (
+                                    <Link
+                                      key={child.id}
+                                      href={child.href}
+                                      onClick={() => setSidebarOpen(false)}
+                                      className={cn(
+                                        'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
+                                        childIsActive
+                                          ? 'bg-amber-50 text-amber-800 font-medium border border-amber-200'
+                                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                      )}
+                                    >
+                                      <child.icon className={cn('w-3.5 h-3.5', childIsActive ? 'text-amber-600' : 'text-gray-400')} />
+                                      {child.label}
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      const active = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={cn(
+                            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                            active
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          )}
+                        >
+                          <item.icon className={cn('w-4.5 h-4.5', active ? 'text-amber-600' : 'text-gray-400')} />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </nav>
