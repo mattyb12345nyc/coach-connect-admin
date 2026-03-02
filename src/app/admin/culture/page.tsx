@@ -104,7 +104,7 @@ const FILTER_TABS: { value: FilterTab; label: string; icon: typeof TrendingUp }[
 ];
 
 const TYPE_CONFIG: Record<CultureType, { label: string; bg: string; text: string; border: string; description: string; icon: typeof TrendingUp }> = {
-  trend: { label: 'Trend', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', description: 'What\'s hot in fashion and culture', icon: TrendingUp },
+  trend: { label: 'Trend', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', description: 'What is hot in fashion and culture', icon: TrendingUp },
   styling: { label: 'Styling Tip', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', description: 'How to wear and style Coach', icon: Palette },
   news: { label: 'News', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', description: 'Brand updates and announcements', icon: Newspaper },
 };
@@ -607,7 +607,7 @@ function TrendWizardModal({
               {step === 1 && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-200">
                   <div>
-                    <h3 className="text-base font-semibold text-gray-900 mb-1">What's trending?</h3>
+                    <h3 className="text-base font-semibold text-gray-900 mb-1">{"What's trending?"}</h3>
                     <p className="text-sm text-gray-400 mb-4">Pick a topic or type your own</p>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {TOPIC_SUGGESTIONS.map((t) => (
