@@ -1241,7 +1241,7 @@ export default function CultureFeedPage() {
       const completed = Number(payload?.completed || 0);
       const idsToTrack = payload?.candidateIds || selectedCandidateIds;
 
-      if (completed > 0) toast.success(`${completed} image(s) completed`);
+      if (completed > 0) toast.info(`${completed} selected item(s) already had images`);
       if (queued > 0) toast.info(`${queued} image(s) generating in background...`);
 
       setPollingIds(idsToTrack);
@@ -1262,9 +1262,12 @@ export default function CultureFeedPage() {
     fetch('/api/admin/culture/trends/images/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageOptions: { numberOfImages: 1, enableSearchGrounding: realWorldAccuracy, realWorldAccuracy, upscale4k } }),
+      body: JSON.stringify({
+        candidateIds: pollingIds,
+        imageOptions: { numberOfImages: 1, enableSearchGrounding: realWorldAccuracy, realWorldAccuracy, upscale4k },
+      }),
     }).catch(() => {});
-  }, [realWorldAccuracy, upscale4k]);
+  }, [pollingIds, realWorldAccuracy, upscale4k]);
 
   useEffect(() => {
     if (pollingIds.length === 0) return;

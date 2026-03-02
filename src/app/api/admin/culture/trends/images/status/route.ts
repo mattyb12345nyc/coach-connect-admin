@@ -55,13 +55,22 @@ export async function POST(request: NextRequest) {
       realWorldAccuracy: false,
       upscale4k: false,
     };
+    const candidateIds: string[] = Array.isArray(body?.candidateIds)
+      ? body.candidateIds.filter((id: unknown) => typeof id === 'string' && id.trim().length > 0)
+      : [];
 
-    const { data: pending, error: fetchErr } = await supabase
+    let pendingQuery = supabase
       .from('culture_trend_candidates')
       .select('*')
       .eq('image_status', 'pending')
       .order('image_requested_at', { ascending: true })
       .limit(1);
+
+    if (candidateIds.length > 0) {
+      pendingQuery = pendingQuery.in('id', candidateIds);
+    }
+
+    const { data: pending, error: fetchErr } = await pendingQuery;
 
     // #region agent log
     _dl('status/route.ts:POST:pending-query', 'Pending query result', { pendingCount: pending?.length ?? 0, fetchErr: fetchErr?.message ?? null, hypothesisId: 'H1' });
@@ -116,10 +125,14 @@ export async function POST(request: NextRequest) {
         .eq('id', candidate.id);
     }
 
-    const { count: remainingCount } = await supabase
+    let remainingQuery = supabase
       .from('culture_trend_candidates')
       .select('id', { count: 'exact', head: true })
       .eq('image_status', 'pending');
+    if (candidateIds.length > 0) {
+      remainingQuery = remainingQuery.in('id', candidateIds);
+    }
+    const { count: remainingCount } = await remainingQuery;
 
     // #region agent log
     _dl('status/route.ts:POST:done', 'Processing complete', { remaining: remainingCount, totalElapsedMs: Date.now() - _t0, hypothesisId: 'H4' });
