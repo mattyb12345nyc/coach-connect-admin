@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-const MAIN_APP_URL = process.env.MAIN_APP_URL || 'https://coach-connect-demo.netlify.app';
+const MAIN_APP_URL = process.env.MAIN_APP_URL || 'https://futureproof.work/coach-connect';
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
 
     if (insertError) throw insertError;
 
-    const inviteUrl = `${MAIN_APP_URL}/invite?token=${token}`;
+    const inviteUrl = `${MAIN_APP_URL}?invite=${token}`;
 
     const { error: authError } = await supabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: inviteUrl,
+      redirectTo: `https://coach-connect-demo.netlify.app/invite?token=${token}`,
     });
 
     if (authError) {

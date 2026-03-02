@@ -193,7 +193,7 @@ export default function InvitationsPage() {
   };
 
   const copyInviteLink = async (invitation: Invitation) => {
-    const url = `https://coach-connect-demo.netlify.app/invite?token=${invitation.token}`;
+    const url = `https://futureproof.work/coach-connect?invite=${invitation.token}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(invitation.id);
