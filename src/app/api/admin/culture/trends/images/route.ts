@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase';
 import { canManageScope, getRequestAdminContext } from '@/lib/admin-permissions';
-import { generateCandidateImage } from '@/lib/trend-engine';
+import { generateCandidateImages } from '@/lib/trend-engine';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +9,13 @@ export async function POST(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
     const supabase = getAdminClient();
-    const { candidateIds } = await request.json();
+    const {
+      candidateIds,
+      numberOfImages,
+      enableSearchGrounding,
+      realWorldAccuracy,
+      upscale4k,
+    } = await request.json();
 
     if (!Array.isArray(candidateIds) || candidateIds.length === 0) {
       return NextResponse.json({ error: 'candidateIds must be a non-empty array' }, { status: 400 });
@@ -35,7 +41,16 @@ export async function POST(request: NextRequest) {
 
     const updates = await Promise.all(
       candidates.map(async (candidate) => {
-        const imageUrl = candidate.image_url || (await generateCandidateImage(candidate.image_prompt || candidate.title));
+        const generatedImages =
+          candidate.image_url
+            ? [candidate.image_url]
+            : await generateCandidateImages(candidate.image_prompt || candidate.title, {
+                numberOfImages: Number(numberOfImages) || 1,
+                enableSearchGrounding: Boolean(enableSearchGrounding),
+                realWorldAccuracy: Boolean(realWorldAccuracy),
+                upscale4k: Boolean(upscale4k),
+              });
+        const imageUrl = generatedImages[0] || null;
         const { data, error } = await supabase
           .from('culture_trend_candidates')
           .update({ image_url: imageUrl })
@@ -43,12 +58,19 @@ export async function POST(request: NextRequest) {
           .select('*')
           .single();
         if (error) throw error;
-        return data;
+        return {
+          ...data,
+          generated_image_count: generatedImages.length,
+        };
       })
     );
 
     const generatedCount = updates.filter((candidate) => Boolean(candidate.image_url)).length;
     const failedCount = updates.length - generatedCount;
+    const totalImagesGenerated = updates.reduce(
+      (sum, candidate) => sum + Number(candidate.generated_image_count || 0),
+      0
+    );
 
     if (generatedCount === 0) {
       return NextResponse.json(
@@ -57,6 +79,7 @@ export async function POST(request: NextRequest) {
           candidates: updates,
           generatedCount,
           failedCount,
+          totalImagesGenerated,
         },
         { status: 422 }
       );
@@ -66,6 +89,7 @@ export async function POST(request: NextRequest) {
       candidates: updates,
       generatedCount,
       failedCount,
+      totalImagesGenerated,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Image generation failed' }, { status: 500 });

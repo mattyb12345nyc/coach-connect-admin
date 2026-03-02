@@ -24,6 +24,16 @@ export interface GeneratedTrendCandidate {
   selectionPayload: Record<string, unknown>;
 }
 
+export interface GeminiImageOptions {
+  numberOfImages?: number;
+  enableSearchGrounding?: boolean;
+  upscale4k?: boolean;
+  realWorldAccuracy?: boolean;
+  aspectRatio?: '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
+  imageSize?: '1K' | '2K' | '4K';
+  thinkingLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -127,38 +137,97 @@ async function generateTrendTextFromPerplexity(selections: TrendSelections): Pro
   }));
 }
 
-async function generateImageWithGemini(prompt: string): Promise<string | null> {
+function buildImagePrompt(prompt: string, options: GeminiImageOptions): string {
+  const parts = [prompt];
+  if (options.realWorldAccuracy || options.enableSearchGrounding) {
+    parts.push('Use grounded, real-world accurate details where possible.');
+  }
+  if (options.upscale4k) {
+    parts.push('Produce ultra high-resolution output suitable for 4K upscaling (3840x2160).');
+  }
+  return parts.join(' ');
+}
+
+async function generateImagesWithGemini(
+  prompt: string,
+  options: GeminiImageOptions = {}
+): Promise<{ images: string[]; textParts: string[] }> {
   const apiKey = getGeminiApiKey();
+  const numberOfImages = Math.max(1, Math.min(4, options.numberOfImages ?? 1));
+  const enableGrounding = Boolean(options.enableSearchGrounding || options.realWorldAccuracy);
+  const enhancedPrompt = buildImagePrompt(prompt, options);
+  const imageSize = options.upscale4k ? '4K' : options.imageSize || '2K';
+  const aspectRatio = options.aspectRatio || '16:9';
+  const thinkingLevel = options.thinkingLevel || 'HIGH';
+
+  const tools: Array<Record<string, object>> = [{ image_generation: {} }];
+  if (enableGrounding) {
+    tools.push({ google_search: {} });
+  }
+
   const response = await fetch(
-    `${GEMINI_API_BASE}/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
+    `${GEMINI_API_BASE}/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ parts: [{ text: enhancedPrompt }] }],
+        tools,
+        ...(enableGrounding ? { toolConfig: { enableGrounding: true } } : {}),
         generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE'],
+          responseModalities: ['IMAGE'],
+          imageConfig: {
+            aspectRatio,
+            imageSize,
+          },
+          thinkingConfig: {
+            thinkingLevel,
+          },
+          number_of_images: numberOfImages,
         },
       }),
     }
   );
 
-  if (!response.ok) return null;
+  if (!response.ok) return { images: [], textParts: [] };
 
   const payload = await response.json();
-  const parts = payload?.candidates?.[0]?.content?.parts || [];
-  const imagePart = parts.find((part: any) => part?.inlineData?.mimeType?.startsWith('image/'));
-  const data = imagePart?.inlineData?.data;
-  const mime = imagePart?.inlineData?.mimeType || 'image/png';
-  if (!data) return null;
+  const candidates = payload?.candidates || [];
+  const images: string[] = [];
+  const textParts: string[] = [];
 
-  return `data:${mime};base64,${data}`;
+  for (const candidate of candidates) {
+    const parts = candidate?.content?.parts || [];
+    for (const part of parts) {
+      const mime = part?.inlineData?.mimeType;
+      const data = part?.inlineData?.data;
+      if (mime?.startsWith('image/') && data) {
+        images.push(`data:${mime};base64,${data}`);
+      } else if (typeof part?.text === 'string') {
+        textParts.push(part.text);
+      }
+    }
+  }
+
+  return { images, textParts };
 }
 
 export async function generateTrendCandidates(selections: TrendSelections): Promise<GeneratedTrendCandidate[]> {
   return generateTrendTextFromPerplexity(selections);
 }
 
-export async function generateCandidateImage(imagePrompt: string): Promise<string | null> {
-  return generateImageWithGemini(imagePrompt);
+export async function generateCandidateImages(
+  imagePrompt: string,
+  options: GeminiImageOptions = {}
+): Promise<string[]> {
+  const result = await generateImagesWithGemini(imagePrompt, options);
+  return result.images;
+}
+
+export async function generateCandidateImage(
+  imagePrompt: string,
+  options: GeminiImageOptions = {}
+): Promise<string | null> {
+  const images = await generateCandidateImages(imagePrompt, options);
+  return images[0] || null;
 }

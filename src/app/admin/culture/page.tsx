@@ -368,6 +368,9 @@ export default function CultureFeedPage() {
   const [stores, setStores] = useState<StoreSummary[]>([]);
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
+  const [imageCount, setImageCount] = useState(1);
+  const [realWorldAccuracy, setRealWorldAccuracy] = useState(false);
+  const [upscale4k, setUpscale4k] = useState(false);
 
   const adminHeaders = useMemo<Record<string, string>>(
     () => (user?.email ? { 'x-admin-email': user.email } : ({} as Record<string, string>)),
@@ -643,7 +646,13 @@ export default function CultureFeedPage() {
       const res = await fetch('/api/admin/culture/trends/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...adminHeaders },
-        body: JSON.stringify({ candidateIds: selectedCandidateIds }),
+        body: JSON.stringify({
+          candidateIds: selectedCandidateIds,
+          numberOfImages: imageCount,
+          realWorldAccuracy,
+          enableSearchGrounding: realWorldAccuracy,
+          upscale4k,
+        }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -657,10 +666,11 @@ export default function CultureFeedPage() {
       }
       const generatedCount = Number(payload?.generatedCount || 0);
       const failedCount = Number(payload?.failedCount || 0);
+      const totalImagesGenerated = Number(payload?.totalImagesGenerated || generatedCount);
       toast.success(
         failedCount > 0
-          ? `Generated ${generatedCount} image(s), ${failedCount} failed`
-          : `Generated ${generatedCount} image(s)`
+          ? `Generated ${totalImagesGenerated} image(s) across ${generatedCount} trend(s), ${failedCount} failed`
+          : `Generated ${totalImagesGenerated} image(s)`
       );
       await fetchCandidates();
     } catch (err: unknown) {
@@ -855,6 +865,34 @@ export default function CultureFeedPage() {
                   {generatingImages ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Image className="w-4 h-4 mr-1" />}
                   Generate Images ({selectedCandidateIds.length})
                 </Button>
+              </div>
+              <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                <select
+                  value={imageCount}
+                  onChange={(e) => setImageCount(Math.max(1, Math.min(4, parseInt(e.target.value) || 1)))}
+                  className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value={1}>1 image per trend</option>
+                  <option value={2}>2 images per trend</option>
+                  <option value={3}>3 images per trend</option>
+                  <option value={4}>4 images per trend</option>
+                </select>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={realWorldAccuracy}
+                    onChange={(e) => setRealWorldAccuracy(e.target.checked)}
+                  />
+                  Real-world accuracy (grounded)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={upscale4k}
+                    onChange={(e) => setUpscale4k(e.target.checked)}
+                  />
+                  4K upscale-ready
+                </label>
               </div>
 
               {loadingCandidates ? (
