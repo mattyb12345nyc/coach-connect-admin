@@ -761,12 +761,6 @@ const VOICE_DIFFICULTY_STYLES: Record<VoiceAgentDifficulty, string> = {
   Advanced: 'bg-rose-100 text-rose-800 border-rose-200',
 };
 
-const PERSONA_INITIALS: Record<string, { initials: string; bg: string; text: string }> = {
-  'Zoe Chen': { initials: 'ZC', bg: 'bg-green-100', text: 'text-green-700' },
-  'Maya Torres': { initials: 'MT', bg: 'bg-amber-100', text: 'text-amber-700' },
-  'Vanessa Liu': { initials: 'VL', bg: 'bg-rose-100', text: 'text-rose-700' },
-};
-
 function VoiceAgentCard({
   agent,
   status,
@@ -776,24 +770,29 @@ function VoiceAgentCard({
   status: 'active' | 'inactive' | 'unknown' | undefined;
   loading: boolean;
 }) {
-  const persona = PERSONA_INITIALS[agent.name] ?? { initials: '??', bg: 'bg-gray-100', text: 'text-gray-600' };
   const badgeStyle = VOICE_DIFFICULTY_STYLES[agent.difficulty];
-  const agentIdBg = agent.difficulty === 'Beginner'
-    ? 'border-green-200 bg-green-50/40'
-    : agent.difficulty === 'Intermediate'
-      ? 'border-amber-200 bg-amber-50/40'
-      : 'border-rose-200 bg-rose-50/40';
 
   return (
-    <Card className="bg-white hover:shadow-md transition-shadow">
+    <Card className="bg-white transition-shadow hover:shadow-md">
       <div className="p-5">
-        <div className="flex items-start gap-3 mb-3">
-          <div className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold', persona.bg, persona.text)}>
-            {persona.initials}
+        {/* Avatar + name row */}
+        <div className="flex items-start gap-3.5 mb-4">
+          <div className="flex-shrink-0">
+            {agent.imageUrl ? (
+              <img
+                src={agent.imageUrl}
+                alt={agent.name}
+                className="h-14 w-14 rounded-full object-cover border-2 border-coach-gold/20"
+              />
+            ) : (
+              <div className="h-14 w-14 rounded-full bg-coach-champagne flex items-center justify-center border-2 border-coach-gold/20">
+                <User className="h-6 w-6 text-coach-mahogany/60" />
+              </div>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-1">
-              <p className="font-semibold text-coach-mahogany text-sm truncate">{agent.name}</p>
+              <h3 className="font-semibold text-coach-mahogany truncate">{agent.name}</h3>
               {loading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300 flex-shrink-0" />
               ) : status === 'active' ? (
@@ -804,31 +803,35 @@ function VoiceAgentCard({
                 <span title="Status unknown"><AlertCircle className="h-3.5 w-3.5 text-gray-300 flex-shrink-0" /></span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-0.5 leading-snug">{agent.scenario}</p>
+            <p className="text-sm text-gray-500">{agent.scenario}</p>
+            <span className={cn('inline-block mt-1.5 px-2 py-0.5 text-xs font-medium rounded-full border', badgeStyle)}>
+              {agent.difficulty}
+            </span>
           </div>
         </div>
 
-        <div className="mb-3">
-          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border', badgeStyle)}>
-            {agent.difficulty}
+        {/* Description */}
+        <p className="text-sm text-gray-600 line-clamp-2 mb-3">{agent.description}</p>
+
+        {/* Agent ID */}
+        <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-4">
+          <Mic className="h-3 w-3 flex-shrink-0" />
+          <span className="font-mono truncate" title={agent.agentId}>
+            {agent.agentId.length > 24 ? agent.agentId.slice(0, 24) + '...' : agent.agentId}
           </span>
         </div>
 
-        <div className={cn('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg mb-4 border', agentIdBg)}>
-          <Mic className="h-3 w-3 text-gray-400 flex-shrink-0" />
-          <span className="font-mono text-[11px] text-gray-500 truncate" title={agent.agentId}>{agent.agentId}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
+        {/* Actions */}
+        <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
           <a href={`https://elevenlabs.io/convai/${agent.agentId}`} target="_blank" rel="noopener noreferrer" className="flex-1">
-            <Button size="sm" className="w-full bg-coach-gold hover:bg-coach-gold/90 text-white text-xs">
-              <Play className="h-3 w-3 mr-1.5" />
+            <Button size="sm" className="w-full bg-coach-gold hover:bg-coach-gold/90 text-white">
+              <Play className="h-3.5 w-3.5 mr-1.5" />
               Test Agent
             </Button>
           </a>
           <a href={`https://elevenlabs.io/app/agents/agents/${agent.agentId}`} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm" title="View agent dashboard">
-              <ExternalLink className="h-3 w-3" />
+              <ExternalLink className="h-3.5 w-3.5" />
             </Button>
           </a>
         </div>
