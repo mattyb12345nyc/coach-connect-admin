@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-const MAIN_APP_URL = process.env.MAIN_APP_URL || 'https://futureproof.work/coach-connect/register';
+const MAIN_APP_URL = process.env.MAIN_APP_URL || 'https://futureproof.work/coach-connect';
 
 export async function GET(request: NextRequest) {
   try {

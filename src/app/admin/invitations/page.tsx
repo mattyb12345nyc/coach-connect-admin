@@ -52,7 +52,7 @@ const ROLE_OPTIONS = [
   { value: 'regional_manager', label: 'Regional Manager' },
   { value: 'admin', label: 'Admin' },
 ];
-const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL || 'https://futureproof.work/coach-connect/register';
+const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL || 'https://futureproof.work/coach-connect';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
