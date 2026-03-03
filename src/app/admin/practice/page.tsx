@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mic, Plus, Trash2, Save, Loader2, Pencil, X, User, ChevronDown, ChevronRight, Brain, BarChart3 } from 'lucide-react';
+import { Mic, Plus, Trash2, Save, Loader2, Pencil, X, User, ChevronDown, ChevronRight, Brain, BarChart3, AudioLines, Play, ExternalLink, RefreshCw, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
+import { VOICE_AGENTS, type VoiceAgentDifficulty, type VoiceAgentConfig } from '@/types/elevenlabs';
 
 type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
@@ -55,6 +56,29 @@ export default function PracticeFloorPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<PersonaFormData>(EMPTY_FORM);
   const [editFormData, setEditFormData] = useState<PersonaFormData>(EMPTY_FORM);
+
+  // Voice agents state
+  const [voiceLiveData, setVoiceLiveData] = useState<Record<string, { status: 'active' | 'inactive' | 'unknown' }>>({});
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceFetched, setVoiceFetched] = useState(false);
+
+  const fetchVoiceAgentStatus = useCallback(async () => {
+    setVoiceLoading(true);
+    const results: Record<string, { status: 'active' | 'inactive' | 'unknown' }> = {};
+    await Promise.allSettled(
+      VOICE_AGENTS.map(async (agent) => {
+        try {
+          const res = await fetch(`/api/proxy/elevenlabs/agents/${agent.agentId}`);
+          results[agent.agentId] = { status: res.ok ? 'active' : 'inactive' };
+        } catch {
+          results[agent.agentId] = { status: 'unknown' };
+        }
+      })
+    );
+    setVoiceLiveData(results);
+    setVoiceLoading(false);
+    setVoiceFetched(true);
+  }, []);
 
   // Analysis config state
   const [analysisOpen, setAnalysisOpen] = useState(false);
@@ -111,7 +135,8 @@ export default function PracticeFloorPage() {
   useEffect(() => {
     fetchPersonas();
     fetchAnalysisConfig();
-  }, [fetchPersonas, fetchAnalysisConfig]);
+    fetchVoiceAgentStatus();
+  }, [fetchPersonas, fetchAnalysisConfig, fetchVoiceAgentStatus]);
 
   const handleCreate = async () => {
     if (!formData.name.trim() || !formData.agent_id.trim()) {
@@ -683,8 +708,131 @@ export default function PracticeFloorPage() {
               ))}
             </div>
           )}
+          {/* Voice Agents */}
+          <div className="mt-10">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-lg font-semibold text-coach-mahogany flex items-center gap-2">
+                  <AudioLines className="h-5 w-5 text-coach-gold" />
+                  ElevenLabs Voice Agents
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">All active Practice Floor personas on ElevenLabs</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchVoiceAgentStatus} disabled={voiceLoading}>
+                {voiceLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                Refresh
+              </Button>
+            </div>
+
+            {(['Beginner', 'Intermediate', 'Advanced'] as VoiceAgentDifficulty[]).map((level) => {
+              const agents = VOICE_AGENTS.filter(a => a.difficulty === level);
+              const dotColor = level === 'Beginner' ? 'bg-green-400' : level === 'Intermediate' ? 'bg-amber-400' : 'bg-rose-400';
+              return (
+                <div key={level} className="mb-7">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className={cn('w-2 h-2 rounded-full flex-shrink-0', dotColor)} />
+                    <span className="text-sm font-semibold text-gray-700">{level}</span>
+                    <span className="text-xs text-gray-400">{agents.length} agents</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {agents.map((agent) => (
+                      <VoiceAgentCard
+                        key={agent.agentId}
+                        agent={agent}
+                        status={voiceLiveData[agent.agentId]?.status}
+                        loading={voiceLoading && !voiceFetched}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
         </div>
     </div>
     </RoleGate>
+  );
+}
+
+const VOICE_DIFFICULTY_STYLES: Record<VoiceAgentDifficulty, string> = {
+  Beginner: 'bg-green-100 text-green-800 border-green-200',
+  Intermediate: 'bg-amber-100 text-amber-800 border-amber-200',
+  Advanced: 'bg-rose-100 text-rose-800 border-rose-200',
+};
+
+const PERSONA_INITIALS: Record<string, { initials: string; bg: string; text: string }> = {
+  'Zoe Chen': { initials: 'ZC', bg: 'bg-green-100', text: 'text-green-700' },
+  'Maya Torres': { initials: 'MT', bg: 'bg-amber-100', text: 'text-amber-700' },
+  'Vanessa Liu': { initials: 'VL', bg: 'bg-rose-100', text: 'text-rose-700' },
+};
+
+function VoiceAgentCard({
+  agent,
+  status,
+  loading,
+}: {
+  agent: VoiceAgentConfig;
+  status: 'active' | 'inactive' | 'unknown' | undefined;
+  loading: boolean;
+}) {
+  const persona = PERSONA_INITIALS[agent.name] ?? { initials: '??', bg: 'bg-gray-100', text: 'text-gray-600' };
+  const badgeStyle = VOICE_DIFFICULTY_STYLES[agent.difficulty];
+  const agentIdBg = agent.difficulty === 'Beginner'
+    ? 'border-green-200 bg-green-50/40'
+    : agent.difficulty === 'Intermediate'
+      ? 'border-amber-200 bg-amber-50/40'
+      : 'border-rose-200 bg-rose-50/40';
+
+  return (
+    <Card className="bg-white hover:shadow-md transition-shadow">
+      <div className="p-5">
+        <div className="flex items-start gap-3 mb-3">
+          <div className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold', persona.bg, persona.text)}>
+            {persona.initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-1">
+              <p className="font-semibold text-coach-mahogany text-sm truncate">{agent.name}</p>
+              {loading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300 flex-shrink-0" />
+              ) : status === 'active' ? (
+                <span title="Active"><CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" /></span>
+              ) : status === 'inactive' ? (
+                <span title="Inactive"><XCircle className="h-3.5 w-3.5 text-rose-400 flex-shrink-0" /></span>
+              ) : (
+                <span title="Status unknown"><AlertCircle className="h-3.5 w-3.5 text-gray-300 flex-shrink-0" /></span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5 leading-snug">{agent.scenario}</p>
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border', badgeStyle)}>
+            {agent.difficulty}
+          </span>
+        </div>
+
+        <div className={cn('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg mb-4 border', agentIdBg)}>
+          <Mic className="h-3 w-3 text-gray-400 flex-shrink-0" />
+          <span className="font-mono text-[11px] text-gray-500 truncate" title={agent.agentId}>{agent.agentId}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <a href={`https://elevenlabs.io/convai/${agent.agentId}`} target="_blank" rel="noopener noreferrer" className="flex-1">
+            <Button size="sm" className="w-full bg-coach-gold hover:bg-coach-gold/90 text-white text-xs">
+              <Play className="h-3 w-3 mr-1.5" />
+              Test Agent
+            </Button>
+          </a>
+          <a href={`https://elevenlabs.io/app/agents/agents/${agent.agentId}`} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="sm" title="View in ElevenLabs dashboard">
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </a>
+        </div>
+      </div>
+    </Card>
   );
 }
