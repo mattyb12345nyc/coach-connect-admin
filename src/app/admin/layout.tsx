@@ -166,13 +166,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           >
             Sign Out
           </button>
-          <Link
-            href="/"
+          <a
+            href="https://coach.futureproof.work/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-coach-gold text-white hover:bg-coach-gold/90 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to App
-          </Link>
+          </a>
         </div>
       </div>
     );
@@ -208,13 +210,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 </span>
               </div>
             )}
-            <Link
-              href="/"
+            <a
+              href="https://coach.futureproof.work/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Back to App</span>
-            </Link>
+            </a>
           </div>
         </div>
       </header>
