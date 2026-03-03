@@ -100,7 +100,7 @@ const navigationGroups: NavGroup[] = [
       { id: 'chat', label: 'Coach Chat', icon: MessageSquare, href: '/admin/chat' },
       { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice' },
       { id: 'community', label: 'Community', icon: Users, href: '/admin/community' },
-      { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture' },
+      { id: 'culture', label: 'Pulse Feed', icon: Sparkles, href: '/admin/culture' },
       { id: 'users-mgmt', label: 'Users', icon: User, href: '/admin/users' },
     ],
   },

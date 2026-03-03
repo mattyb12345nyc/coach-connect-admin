@@ -1085,7 +1085,7 @@ export default function CultureFeedPage() {
       if (!res.ok) throw new Error('Failed to fetch culture items');
       setItems(await res.json());
     } catch {
-      toast.error('Failed to load culture feed');
+      toast.error('Failed to load pulse feed');
     } finally {
       setLoading(false);
     }
@@ -1334,8 +1334,8 @@ export default function CultureFeedPage() {
           {/* Header */}
           <div className="flex items-start justify-between mb-8">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Culture Feed</h1>
-              <p className="mt-1 text-sm text-gray-500">Manage trends, styling tips, and news for the Culture tab</p>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Pulse Feed</h1>
+              <p className="mt-1 text-sm text-gray-500">Manage trends, styling tips, and news for the Pulse tab</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setEditingForm({ ...EMPTY_FORM })} disabled={!!editingForm}>
@@ -1400,14 +1400,14 @@ export default function CultureFeedPage() {
             <div className="flex items-center justify-center py-20">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-coach-gold" />
-                <p className="text-sm text-gray-500">Loading culture feed...</p>
+                <p className="text-sm text-gray-500">Loading pulse feed...</p>
               </div>
             </div>
           ) : filteredItems.length === 0 ? (
             <Card className="py-16 flex flex-col items-center justify-center text-center">
               <Sparkles className="h-10 w-10 text-gray-300 mb-3" />
               <p className="text-sm font-medium text-gray-500">No items found</p>
-              <p className="text-xs text-gray-400 mt-1">{activeTab === 'all' ? 'Add your first culture feed item' : 'No items match this filter'}</p>
+              <p className="text-xs text-gray-400 mt-1">{activeTab === 'all' ? 'Add your first pulse feed item' : 'No items match this filter'}</p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

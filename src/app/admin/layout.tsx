@@ -51,7 +51,7 @@ const navSections: NavSection[] = [
       },
       { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice', minRole: 'store_manager' },
       { id: 'community', label: 'Community', icon: Users, href: '/admin/community', minRole: 'store_manager' },
-      { id: 'culture', label: 'Culture Feed', icon: Sparkles, href: '/admin/culture', minRole: 'store_manager' },
+      { id: 'culture', label: 'Pulse Feed', icon: Sparkles, href: '/admin/culture', minRole: 'store_manager' },
       { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'store_manager' },
       { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'store_manager' },
       { id: 'invitations', label: 'Invitations', icon: Mail, href: '/admin/invitations', minRole: 'store_manager' },
