@@ -291,7 +291,7 @@ export default function PracticeFloorPage() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="agent_id">Agent ID (ElevenLabs)</Label>
+        <Label htmlFor="agent_id">Agent ID</Label>
         <Input
           id="agent_id"
           value={data.agent_id}
@@ -714,9 +714,9 @@ export default function PracticeFloorPage() {
               <div>
                 <h2 className="text-lg font-semibold text-coach-mahogany flex items-center gap-2">
                   <AudioLines className="h-5 w-5 text-coach-gold" />
-                  ElevenLabs Voice Agents
+                  Coach Voice Agents
                 </h2>
-                <p className="text-sm text-gray-500 mt-0.5">All active Practice Floor personas on ElevenLabs</p>
+                <p className="text-sm text-gray-500 mt-0.5">All active Coach Voice Agent personas</p>
               </div>
               <Button variant="outline" size="sm" onClick={fetchVoiceAgentStatus} disabled={voiceLoading}>
                 {voiceLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
@@ -827,7 +827,7 @@ function VoiceAgentCard({
             </Button>
           </a>
           <a href={`https://elevenlabs.io/app/agents/agents/${agent.agentId}`} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm" title="View in ElevenLabs dashboard">
+            <Button variant="outline" size="sm" title="View agent dashboard">
               <ExternalLink className="h-3 w-3" />
             </Button>
           </a>
