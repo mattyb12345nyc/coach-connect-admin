@@ -52,7 +52,7 @@ const ROLE_OPTIONS = [
   { value: 'regional_manager', label: 'Regional Manager' },
   { value: 'admin', label: 'Admin' },
 ];
-const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL || 'https://futureproof.work/coach-connect';
+const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL || 'https://coach.futureproof.work';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
@@ -257,7 +257,7 @@ export default function InvitationsPage() {
               <Mail className="h-6 w-6 text-coach-mahogany" />
               <h1 className="text-2xl font-bold text-coach-black tracking-tight">Invitations</h1>
             </div>
-            <p className="text-sm text-gray-500">Invite team members to Coach Connect</p>
+            <p className="text-sm text-gray-500">Invite team members to Coach Pulse</p>
           </div>
 
           <Card className="p-6 mb-6">

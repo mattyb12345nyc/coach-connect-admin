@@ -48,9 +48,9 @@ export const useAgentStore = create<AgentStore>()(
       paginationMeta: undefined,
 
       /**
-       * Fetch the locked Coach Connect project (ID 90868)
+       * Fetch the locked Coach Pulse project (ID 90868)
        *
-       * This instance is locked to a single project for Coach Connect.
+       * This instance is locked to a single project for Coach Pulse.
        */
       fetchAgents: async () => {
         set({ loading: true, error: null });

@@ -108,12 +108,12 @@ export const Navbar: React.FC<NavbarProps> = ({ showBackButton = true }) => {
               <div className="w-8 h-8 rounded-lg flex items-center justify-center">
                 <img
                   src="/logo.png"
-                  alt="Coach Connect Logo"
+                  alt="Coach Pulse Logo"
                   className="w-8 h-8 rounded-lg"
                 />
               </div>
               <span className="text-lg font-semibold text-foreground hidden sm:block font-[var(--font-playfair)]">
-                Coach Connect Admin
+                Coach Pulse Admin
               </span>
             </Link>
           </div>

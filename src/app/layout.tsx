@@ -82,8 +82,8 @@ const playfair = Playfair_Display({
  * @see https://nextjs.org/docs/app/api-reference/functions/generate-metadata
  */
 export const metadata: Metadata = {
-  title: "Coach Connect Admin",
-  description: "Admin dashboard for Coach Connect - powered by CustomGPT.ai",
+  title: "Coach Pulse Admin",
+  description: "Admin dashboard for Coach Pulse - powered by CustomGPT.ai",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -95,14 +95,14 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Coach Connect",
+    title: "Coach Pulse",
   },
   other: {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "Coach Connect",
-    "application-name": "Coach Connect",
+    "apple-mobile-web-app-title": "Coach Pulse",
+    "application-name": "Coach Pulse",
     "msapplication-TileColor": "#C9A227",
     "msapplication-tap-highlight": "no",
     "theme-color": "#C9A227",

@@ -1,0 +1,2 @@
+{"sessionId":"000f0f","location":"LoginPage.jsx:handlePasswordLogin","message":"Login attempt starting","data":{"hasEmail":true,"emailDomain":"mattbritton.com"},"timestamp":1772500763631,"hypothesisId":"H7","runId":"login-debug"}
+{"sessionId":"000f0f","location":"LoginPage.jsx:signInResult","message":"signInWithPassword returned","data":{"hasError":false,"hasSession":true,"hasUser":true},"timestamp":1772500764288,"hypothesisId":"H7","runId":"login-debug"}

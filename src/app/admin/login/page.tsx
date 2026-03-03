@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
             <Lock className="w-7 h-7 text-coach-gold" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Admin Sign In</h1>
-          <p className="text-sm text-gray-500 mt-1">Coach Connect Administration</p>
+          <p className="text-sm text-gray-500 mt-1">Coach Pulse Administration</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">

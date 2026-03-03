@@ -190,9 +190,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           </button>
 
           <Link href="/" className="flex items-center gap-2">
-            <img src="/logo.png" alt="Coach Connect" className="w-7 h-7 rounded-lg" />
+            <img src="/logo.png" alt="Coach Pulse" className="w-7 h-7 rounded-lg" />
             <span className="text-base font-semibold text-gray-900 hidden sm:block">
-              Coach Connect
+              Coach Pulse
             </span>
           </Link>
 

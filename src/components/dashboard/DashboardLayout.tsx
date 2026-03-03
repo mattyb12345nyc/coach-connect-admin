@@ -234,7 +234,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
           {!sidebarCollapsed && (
             <div className="flex-1">
-              <h1 className="text-lg font-semibold text-foreground">Coach Connect</h1>
+              <h1 className="text-lg font-semibold text-foreground">Coach Pulse</h1>
               <p className="text-xs text-muted-foreground">Admin Dashboard</p>
             </div>
           )}
@@ -284,7 +284,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   <Bot className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold text-foreground">Coach Connect</h1>
+                  <h1 className="text-lg font-semibold text-foreground">Coach Pulse</h1>
                   <p className="text-xs text-muted-foreground">Admin Dashboard</p>
                 </div>
               </div>

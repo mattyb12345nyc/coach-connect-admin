@@ -194,7 +194,7 @@ function RegisterPage() {
           <div className="w-14 h-14 rounded-xl overflow-hidden shadow-md mb-4 ring-2 ring-primary/20">
             <Image
               src="/logo.png"
-              alt="Coach Connect"
+              alt="Coach Pulse"
               width={56}
               height={56}
               className="w-full h-full object-cover"
@@ -202,7 +202,7 @@ function RegisterPage() {
             />
           </div>
           <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
-            Coach Connect
+            Coach Pulse
           </h1>
         </div>
 
@@ -216,7 +216,7 @@ function RegisterPage() {
             <CardHeader>
               <CardTitle className="text-lg">Complete Your Profile</CardTitle>
               <p className="text-sm text-muted-foreground">
-                You&apos;ve been invited to join Coach Connect. Fill out the details below to get started.
+                You&apos;ve been invited to join Coach Pulse. Fill out the details below to get started.
               </p>
             </CardHeader>
             <CardContent>
@@ -410,7 +410,7 @@ function SuccessCard({ countdown }: { countdown: number }) {
           <CheckCircle className="h-7 w-7 text-primary" />
         </div>
         <h2 className="text-xl font-semibold text-foreground mb-2">
-          Welcome to Coach Connect!
+          Welcome to Coach Pulse!
         </h2>
         <p className="text-sm text-muted-foreground mb-6">
           Your account has been created successfully.

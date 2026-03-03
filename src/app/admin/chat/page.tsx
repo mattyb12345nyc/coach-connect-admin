@@ -640,7 +640,7 @@ export default function ChatSettingsPage() {
                     <Input
                       value={settings.chatbot_title ?? ''}
                       onChange={(e) => updateSetting('chatbot_title', e.target.value)}
-                      placeholder="Coach Connect"
+                      placeholder="Coach Pulse"
                     />
                   </div>
                   <div className="space-y-1.5">

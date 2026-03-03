@@ -83,7 +83,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   children, 
   showNavbar = true, 
   showBackButton = true,
-  pageTitle = 'Coach Connect',
+  pageTitle = 'Coach Pulse',
   showMobileNavigation = true,
   unreadCount = 0,
   onAgentSelect
@@ -145,7 +145,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
             <div className="flex items-center gap-2">
               <img
                 src="/logo.png"
-                alt="Coach Connect"
+                alt="Coach Pulse"
                 className="w-6 h-6 rounded"
               />
             </div>
