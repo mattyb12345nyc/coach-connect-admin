@@ -1183,21 +1183,62 @@ export default function CultureFeedPage() {
   };
 
   const handleApproveCandidate = async (candidateId: string) => {
-    try { setProcessingCandidateId(candidateId); const res = await fetch('/api/admin/culture/trends/approve', { method: 'POST', headers: { 'Content-Type': 'application/json', ...adminHeaders }, body: JSON.stringify({ candidateId }) }); if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Approval failed'); } toast.success('Candidate approved and published'); await Promise.all([fetchCandidates(), fetchItems()]); }
-    catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Approval failed'); }
-    finally { setProcessingCandidateId(null); }
+    const prev = candidates;
+    setCandidates((c) => c.filter((x) => x.id !== candidateId));
+    setSelectedCandidateIds((s) => s.filter((id) => id !== candidateId));
+    setProcessingCandidateId(candidateId);
+    try {
+      const res = await fetch('/api/admin/culture/trends/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        body: JSON.stringify({ candidateId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Approval failed');
+      }
+      toast.success('Candidate approved and published');
+      await fetchItems();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Approval failed');
+      setCandidates(prev);
+    } finally {
+      setProcessingCandidateId(null);
+    }
   };
 
   const handleRejectCandidate = async (candidateId: string) => {
-    try { setProcessingCandidateId(candidateId); const res = await fetch('/api/admin/culture/trends/reject', { method: 'POST', headers: { 'Content-Type': 'application/json', ...adminHeaders }, body: JSON.stringify({ candidateId }) }); if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Reject failed'); } toast.success('Candidate rejected'); await fetchCandidates(); }
-    catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Reject failed'); }
-    finally { setProcessingCandidateId(null); }
+    const prev = candidates;
+    setCandidates((c) => c.filter((x) => x.id !== candidateId));
+    setSelectedCandidateIds((s) => s.filter((id) => id !== candidateId));
+    setProcessingCandidateId(candidateId);
+    try {
+      const res = await fetch('/api/admin/culture/trends/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        body: JSON.stringify({ candidateId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Reject failed');
+      }
+      toast.success('Candidate rejected');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Reject failed');
+      setCandidates(prev);
+    } finally {
+      setProcessingCandidateId(null);
+    }
   };
 
   const handleBulkReject = async (ids: string[]) => {
     if (!ids.length) return;
+    const prev = candidates;
+    const idSet = new Set(ids);
+    setCandidates((c) => c.filter((x) => !idSet.has(x.id)));
+    setSelectedCandidateIds([]);
+    setBulkRejecting(true);
     try {
-      setBulkRejecting(true);
       await Promise.all(ids.map((id) =>
         fetch('/api/admin/culture/trends/reject', {
           method: 'POST',
@@ -1206,10 +1247,10 @@ export default function CultureFeedPage() {
         })
       ));
       toast.success(`Rejected ${ids.length} trend${ids.length !== 1 ? 's' : ''}`);
-      setSelectedCandidateIds([]);
-      await fetchCandidates();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Bulk reject failed');
+      setCandidates(prev);
+      await fetchCandidates();
     } finally {
       setBulkRejecting(false);
     }
