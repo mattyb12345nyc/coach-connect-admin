@@ -229,7 +229,7 @@ export default function InvitationsPage() {
   };
 
   const copyInviteLink = async (invitation: Invitation) => {
-    const url = `${MAIN_APP_URL}?token=${invitation.token}`;
+    const url = `${MAIN_APP_URL}?invite=${invitation.token}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(invitation.id);

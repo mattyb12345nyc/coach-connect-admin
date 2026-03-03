@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     if (insertError) throw insertError;
 
-    const inviteUrl = `${MAIN_APP_URL}?token=${token}`;
+    const inviteUrl = `${MAIN_APP_URL}?invite=${token}`;
 
     const { error: authError } = await supabase.auth.admin.inviteUserByEmail(normalizedEmail, {
       redirectTo: inviteUrl,
