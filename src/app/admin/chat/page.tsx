@@ -14,14 +14,11 @@ import {
   Pencil,
   ChevronDown,
   ChevronRight,
-  Bot,
   Type,
-  Palette,
   Settings2,
   Sparkles,
   X,
   RefreshCw,
-  Globe,
   Zap,
   Eye,
   Quote,
@@ -29,6 +26,11 @@ import {
   Share2,
   Download,
   FileText,
+  Upload,
+  Database,
+  CheckCircle,
+  AlertCircle,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -38,6 +40,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { AgentSettings } from '@/types';
+import type { Page } from '@/types/pages.types';
 import { RoleGate } from '@/components/admin/RoleGate';
 
 // ─── Quick Actions types (Supabase) ───
@@ -209,6 +212,14 @@ export default function ChatSettingsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState<EditingAction>(EMPTY_ACTION);
 
+  // Knowledge base state
+  const [pages, setPages] = useState<Page[]>([]);
+  const [pagesLoading, setPagesLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [deletingPageId, setDeletingPageId] = useState<number | null>(null);
+  const [reindexingPageId, setReindexingPageId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // ─── Fetch CustomGPT settings ───
 
   const fetchSettings = useCallback(async () => {
@@ -286,10 +297,81 @@ export default function ChatSettingsPage() {
     }
   }, []);
 
+  // ─── Fetch Knowledge Base Pages ───
+
+  const fetchPages = useCallback(async () => {
+    setPagesLoading(true);
+    try {
+      const res = await fetch(`/api/proxy/projects/${PROJECT_ID}/pages?limit=100&order=desc`);
+      if (!res.ok) throw new Error(`Failed to fetch pages (${res.status})`);
+      const json = await res.json();
+      setPages(json.data?.pages?.data ?? []);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load documents');
+    } finally {
+      setPagesLoading(false);
+    }
+  }, []);
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`/api/proxy/projects/${PROJECT_ID}/sources`, {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as any).error ?? `Upload failed for ${file.name}`);
+        }
+      }
+      toast.success(`Uploaded ${files.length} file${files.length !== 1 ? 's' : ''}`);
+      await fetchPages();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePage = async (pageId: number) => {
+    setDeletingPageId(pageId);
+    try {
+      const res = await fetch(`/api/proxy/projects/${PROJECT_ID}/pages/${pageId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      toast.success('Document deleted');
+      setPages((prev) => prev.filter((p) => p.id !== pageId));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setDeletingPageId(null);
+    }
+  };
+
+  const handleReindexPage = async (pageId: number) => {
+    setReindexingPageId(pageId);
+    try {
+      const res = await fetch(`/api/proxy/projects/${PROJECT_ID}/pages/${pageId}/reindex`, { method: 'POST' });
+      if (!res.ok) throw new Error('Reindex failed');
+      toast.success('Re-indexing started');
+      await fetchPages();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Reindex failed');
+    } finally {
+      setReindexingPageId(null);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
     fetchActions();
-  }, [fetchSettings, fetchActions]);
+    fetchPages();
+  }, [fetchSettings, fetchActions, fetchPages]);
 
   // ─── Quick Action handlers ───
 
@@ -376,7 +458,7 @@ export default function ChatSettingsPage() {
             </div>
             <div>
               <h1 className="text-3xl font-display font-bold text-foreground">Coach Chat</h1>
-              <p className="text-muted-foreground">AI settings, messages, appearance, and quick actions</p>
+              <p className="text-muted-foreground">Messages, knowledge base, features, and quick actions</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -413,117 +495,7 @@ export default function ChatSettingsPage() {
           </div>
         ) : (
           <>
-            {/* ─── Section 1: AI Persona & Model ─── */}
-            <Section
-              title="AI Persona & Model"
-              subtitle="Define the chatbot's personality, model, and behavior"
-              icon={Bot}
-              defaultOpen={true}
-            >
-              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Persona Instructions</Label>
-                  <p className="text-xs text-muted-foreground">
-                    System prompt that defines how Tabby responds to users
-                  </p>
-                  <textarea
-                    value={settings.persona_instructions ?? ''}
-                    onChange={(e) => updateSetting('persona_instructions', e.target.value)}
-                    rows={6}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold outline-none resize-y"
-                    placeholder="You are Tabby, a knowledgeable Coach brand ambassador..."
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Custom Persona Name</Label>
-                  <Input
-                    value={settings.custom_persona ?? ''}
-                    onChange={(e) => updateSetting('custom_persona', e.target.value)}
-                    placeholder="e.g. Tabby"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Select
-                    label="Response Source"
-                    value={settings.response_source ?? 'default'}
-                    options={[
-                      { value: 'default', label: 'Default' },
-                      { value: 'own_content', label: 'Own Content Only' },
-                      { value: 'openai_content', label: 'OpenAI Content' },
-                    ]}
-                    onChange={(v) => updateSetting('response_source', v as AgentSettings['response_source'])}
-                  />
-
-                  <Select
-                    label="AI Model"
-                    value={settings.chatbot_model ?? 'gpt-4-o'}
-                    options={
-                      settings.agent_capability === 'fastest-responses'
-                        ? [
-                            { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-                            { value: 'gpt-4-1-mini', label: 'GPT-4.1 Mini' },
-                            { value: 'gpt-o4-mini-low', label: 'GPT O4 Mini (Low)' },
-                            { value: 'gpt-o4-mini-medium', label: 'GPT O4 Mini (Medium)' },
-                            { value: 'gpt-o4-mini-high', label: 'GPT O4 Mini (High)' },
-                          ]
-                        : [
-                            { value: 'gpt-4-o', label: 'GPT-4o' },
-                            { value: 'gpt-4-1', label: 'GPT-4.1' },
-                            { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-                            { value: 'gpt-4-1-mini', label: 'GPT-4.1 Mini' },
-                            { value: 'gpt-o4-mini-low', label: 'GPT O4 Mini (Low)' },
-                            { value: 'gpt-o4-mini-medium', label: 'GPT O4 Mini (Medium)' },
-                            { value: 'gpt-o4-mini-high', label: 'GPT O4 Mini (High)' },
-                            { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
-                            { value: 'claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-                          ]
-                    }
-                    onChange={(v) => updateSetting('chatbot_model', v)}
-                  />
-
-                  <Select
-                    label="Agent Capability"
-                    value={settings.agent_capability ?? 'optimal-choice'}
-                    options={[
-                      { value: 'fastest-responses', label: 'Fastest Responses' },
-                      { value: 'optimal-choice', label: 'Optimal Choice' },
-                      { value: 'advanced-reasoning', label: 'Advanced Reasoning' },
-                      { value: 'complex-tasks', label: 'Complex Tasks' },
-                    ]}
-                    onChange={(v) => {
-                      updateSetting('agent_capability', v as AgentSettings['agent_capability']);
-                      if (v === 'fastest-responses') {
-                        const miniModels = ['gpt-4o-mini', 'gpt-4-1-mini', 'gpt-o4-mini-low', 'gpt-o4-mini-medium', 'gpt-o4-mini-high'];
-                        if (!miniModels.includes(settings.chatbot_model ?? '')) {
-                          updateSetting('chatbot_model', 'gpt-4o-mini');
-                          toast.info('Model switched to GPT-4o Mini for Fastest Responses mode');
-                        }
-                      }
-                    }}
-                  />
-
-                  <Select
-                    label="Language"
-                    value={settings.chatbot_msg_lang ?? 'en'}
-                    options={[
-                      { value: 'en', label: 'English' },
-                      { value: 'es', label: 'Spanish' },
-                      { value: 'fr', label: 'French' },
-                      { value: 'de', label: 'German' },
-                      { value: 'zh', label: 'Chinese' },
-                      { value: 'ja', label: 'Japanese' },
-                      { value: 'ko', label: 'Korean' },
-                      { value: 'pt', label: 'Portuguese' },
-                    ]}
-                    onChange={(v) => updateSetting('chatbot_msg_lang', v)}
-                  />
-                </div>
-              </div>
-            </Section>
-
-            {/* ─── Section 2: Messages & Prompts ─── */}
+            {/* ─── Section 1: Messages & Prompts ─── */}
             <Section
               title="Messages & Prompts"
               subtitle="Welcome messages, example questions, and system messages"
@@ -627,137 +599,7 @@ export default function ChatSettingsPage() {
               </div>
             </Section>
 
-            {/* ─── Section 3: Appearance ─── */}
-            <Section
-              title="Appearance"
-              subtitle="Chatbot title, colors, avatar, and background"
-              icon={Palette}
-            >
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Chatbot Title</Label>
-                    <Input
-                      value={settings.chatbot_title ?? ''}
-                      onChange={(e) => updateSetting('chatbot_title', e.target.value)}
-                      placeholder="Coach Pulse"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Avatar URL</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={settings.chatbot_avatar ?? ''}
-                        onChange={(e) => updateSetting('chatbot_avatar', e.target.value)}
-                        placeholder="https://..."
-                        className="flex-1"
-                      />
-                      {settings.chatbot_avatar && (
-                        <img
-                          src={settings.chatbot_avatar}
-                          alt="avatar"
-                          className="w-10 h-10 rounded-lg border border-border object-cover"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Primary Color</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={settings.chatbot_color ?? '#c9a962'}
-                        onChange={(e) => updateSetting('chatbot_color', e.target.value)}
-                        className="w-10 h-10 rounded-md border border-border cursor-pointer"
-                      />
-                      <Input
-                        value={settings.chatbot_color ?? ''}
-                        onChange={(e) => updateSetting('chatbot_color', e.target.value)}
-                        placeholder="#c9a962"
-                        className="flex-1 font-mono text-xs"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Toolbar Color</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={settings.chatbot_toolbar_color ?? '#1a1a1a'}
-                        onChange={(e) => updateSetting('chatbot_toolbar_color', e.target.value)}
-                        className="w-10 h-10 rounded-md border border-border cursor-pointer"
-                      />
-                      <Input
-                        value={settings.chatbot_toolbar_color ?? ''}
-                        onChange={(e) => updateSetting('chatbot_toolbar_color', e.target.value)}
-                        placeholder="#1a1a1a"
-                        className="flex-1 font-mono text-xs"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Title Color</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={settings.chatbot_title_color ?? '#ffffff'}
-                        onChange={(e) => updateSetting('chatbot_title_color', e.target.value)}
-                        className="w-10 h-10 rounded-md border border-border cursor-pointer"
-                      />
-                      <Input
-                        value={settings.chatbot_title_color ?? ''}
-                        onChange={(e) => updateSetting('chatbot_title_color', e.target.value)}
-                        placeholder="#ffffff"
-                        className="flex-1 font-mono text-xs"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Background Color</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={settings.chatbot_background_color ?? '#f5f0eb'}
-                        onChange={(e) => updateSetting('chatbot_background_color', e.target.value)}
-                        className="w-10 h-10 rounded-md border border-border cursor-pointer"
-                      />
-                      <Input
-                        value={settings.chatbot_background_color ?? ''}
-                        onChange={(e) => updateSetting('chatbot_background_color', e.target.value)}
-                        placeholder="#f5f0eb"
-                        className="flex-1 font-mono text-xs"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Select
-                  label="Background Type"
-                  value={settings.chatbot_background_type ?? 'color'}
-                  options={[
-                    { value: 'color', label: 'Solid Color' },
-                    { value: 'image', label: 'Image' },
-                  ]}
-                  onChange={(v) => updateSetting('chatbot_background_type', v as 'color' | 'image')}
-                />
-
-                {settings.chatbot_background_type === 'image' && (
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Background Image URL</Label>
-                    <Input
-                      value={settings.chatbot_background ?? ''}
-                      onChange={(e) => updateSetting('chatbot_background', e.target.value)}
-                      placeholder="https://..."
-                    />
-                  </div>
-                )}
-              </div>
-            </Section>
-
-            {/* ─── Section 4: Features & Citations ─── */}
+            {/* ─── Section 3: Features & Citations ─── */}
             <Section
               title="Features & Citations"
               subtitle="Toggle chatbot capabilities and citation display"
@@ -841,6 +683,152 @@ export default function ChatSettingsPage() {
                     ]}
                     onChange={(v) => updateSetting('citations_view_type', v as AgentSettings['citations_view_type'])}
                   />
+                </div>
+              )}
+            </Section>
+
+            {/* ─── Section 4: Knowledge Base ─── */}
+            <Section
+              title="Knowledge Base"
+              subtitle="Documents and files that power the coach AI"
+              icon={Database}
+              defaultOpen={true}
+              actions={
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.pptx,.ppt,.md"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e.target.files)}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                    disabled={uploading}
+                    className="bg-coach-gold hover:bg-coach-gold/90 text-white"
+                  >
+                    {uploading ? (
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-1.5" />
+                    )}
+                    Upload Files
+                  </Button>
+                </>
+              }
+            >
+              {pagesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-coach-gold" />
+                </div>
+              ) : pages.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Database className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">No documents yet</p>
+                  <p className="text-sm mt-1">Upload files to give the coach AI knowledge about your brand</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm text-muted-foreground">
+                      {pages.length} document{pages.length !== 1 ? 's' : ''}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={fetchPages}
+                      disabled={pagesLoading}
+                      className="h-7 text-xs"
+                    >
+                      <RefreshCw className={cn('w-3 h-3 mr-1', pagesLoading && 'animate-spin')} />
+                      Refresh
+                    </Button>
+                  </div>
+                  {pages.map((page) => {
+                    const isFile = page.is_file;
+                    const name = page.filename || page.page_url;
+                    const crawlOk = page.crawl_status === 'crawled';
+                    const indexOk = page.index_status === 'indexed';
+                    const isBusy = page.crawl_status === 'crawling' || page.crawl_status === 'queued'
+                      || page.index_status === 'indexing' || page.index_status === 'queued';
+                    const hasFailed = page.crawl_status === 'failed' || page.index_status === 'failed';
+
+                    return (
+                      <div
+                        key={page.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-border bg-white"
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4 text-gray-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate" title={name}>
+                            {name}
+                          </p>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            {isBusy && (
+                              <span className="flex items-center gap-1 text-xs text-amber-600">
+                                <Clock className="w-3 h-3" />
+                                {page.crawl_status === 'queued' || page.index_status === 'queued' ? 'Queued' : 'Processing'}
+                              </span>
+                            )}
+                            {crawlOk && indexOk && (
+                              <span className="flex items-center gap-1 text-xs text-emerald-600">
+                                <CheckCircle className="w-3 h-3" />
+                                Indexed
+                              </span>
+                            )}
+                            {hasFailed && (
+                              <span className="flex items-center gap-1 text-xs text-red-500">
+                                <AlertCircle className="w-3 h-3" />
+                                Failed
+                              </span>
+                            )}
+                            {page.filesize && (
+                              <span className="text-xs text-muted-foreground">
+                                {page.filesize > 1048576
+                                  ? `${(page.filesize / 1048576).toFixed(1)} MB`
+                                  : `${Math.round(page.filesize / 1024)} KB`}
+                              </span>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(page.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleReindexPage(page.id)}
+                            disabled={reindexingPageId === page.id}
+                            title="Re-index"
+                            className="p-1.5 rounded-md hover:bg-accent transition-colors"
+                          >
+                            {reindexingPageId === page.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            ) : (
+                              <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePage(page.id)}
+                            disabled={deletingPageId === page.id}
+                            title="Delete"
+                            className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+                          >
+                            {deletingPageId === page.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-destructive" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 text-destructive/70" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </Section>
