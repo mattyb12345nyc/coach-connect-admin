@@ -83,7 +83,7 @@ const playfair = Playfair_Display({
  */
 export const metadata: Metadata = {
   title: "Coach Pulse Admin",
-  description: "Admin dashboard for Coach Pulse - powered by CustomGPT.ai",
+  description: "Admin dashboard for Coach Pulse",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
