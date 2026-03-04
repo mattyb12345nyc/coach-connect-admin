@@ -569,12 +569,61 @@ function ItemRow({
   toggling: boolean;
   warning?: string;
 }) {
+  const [confirming, setConfirming] = useState(false);
+
+  const handleToggleClick = () => {
+    if (active) {
+      setConfirming(true);
+    } else {
+      onToggleActive();
+    }
+  };
+
+  const confirmHide = () => {
+    setConfirming(false);
+    onToggleActive();
+  };
+
+  if (confirming) {
+    return (
+      <div className="flex items-center gap-4 px-4 py-3 bg-amber-50 rounded-lg border border-amber-300">
+        <span className="flex-1 text-sm font-medium text-amber-900">
+          Hide this card from associates?
+        </span>
+        <div className="flex items-center gap-3 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setConfirming(false)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={confirmHide}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            Confirm
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn(
-      'flex items-center gap-3 px-4 py-3 bg-white rounded-lg border transition-colors group',
+      'flex items-center gap-4 px-4 py-3 bg-white rounded-lg border transition-colors group',
       warning ? 'border-amber-300 bg-amber-50/60 hover:border-amber-400' : 'border-gray-100 hover:border-gray-200'
     )}>
+      {/* Drag handle */}
       <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
+
+      {/* Toggle — left side */}
+      <div className="shrink-0">
+        {toggling ? (
+          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+        ) : (
+          <ActiveToggle active={active} onChange={handleToggleClick} />
+        )}
+      </div>
+
+      {/* Label — centre */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <p className={cn('text-sm font-medium truncate', !active && 'text-gray-400')}>
@@ -597,12 +646,9 @@ function ItemRow({
           <p className="text-xs text-amber-600 mt-0.5">{warning}</p>
         )}
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {toggling ? (
-          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-        ) : (
-          <ActiveToggle active={active} onChange={onToggleActive} />
-        )}
+
+      {/* Edit / Delete — right side */}
+      <div className="flex items-center gap-4 shrink-0">
         <Button variant="ghost" size="icon-sm" onClick={onEdit}>
           <Pencil className="w-3.5 h-3.5" />
         </Button>
