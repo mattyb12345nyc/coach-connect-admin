@@ -14,6 +14,7 @@ import {
   Star,
   X,
   Check,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -384,6 +385,25 @@ function CulturalMomentForm({
   storeId: string | null;
   stores: StoreSummary[];
 }) {
+  const [daysAwayError, setDaysAwayError] = useState(false);
+
+  const handleDaysAwayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDaysAwayError(false);
+    const raw = e.target.value;
+    // Allow empty string during typing — store null so validation can catch it
+    const parsed = raw === '' ? (null as unknown as number) : parseInt(raw, 10);
+    onChange({ ...data, days_away: isNaN(parsed as number) ? (null as unknown as number) : parsed });
+  };
+
+  const handleSaveWithValidation = () => {
+    if (data.days_away === null || data.days_away === undefined || isNaN(data.days_away as number)) {
+      setDaysAwayError(true);
+      return;
+    }
+    setDaysAwayError(false);
+    onSave();
+  };
+
   return (
     <Card className="p-5 border-coach-gold/30 bg-amber-50/30">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -400,8 +420,23 @@ function CulturalMomentForm({
           <Input value={data.color_gradient} onChange={(e) => onChange({ ...data, color_gradient: e.target.value })} placeholder="e.g. from-purple-500 to-pink-500" />
         </div>
         <div className="space-y-1.5">
-          <Label>Days Away</Label>
-          <Input type="number" value={data.days_away} onChange={(e) => onChange({ ...data, days_away: parseInt(e.target.value) || 0 })} />
+          <Label>
+            Days Away
+            {daysAwayError && (
+              <span className="ml-2 text-xs font-normal text-red-500 inline-flex items-center gap-0.5">
+                <AlertTriangle className="w-3 h-3" />
+                Days Away is required
+              </span>
+            )}
+          </Label>
+          <Input
+            type="number"
+            value={data.days_away ?? ''}
+            onChange={handleDaysAwayChange}
+            className={cn(daysAwayError && 'border-red-400 focus:border-red-500 focus:ring-red-200')}
+            placeholder="e.g. 14"
+            min={0}
+          />
         </div>
         <div className="space-y-1.5">
           <Label>Action Text</Label>
@@ -428,7 +463,7 @@ function CulturalMomentForm({
           <X className="w-4 h-4 mr-1" />
           Cancel
         </Button>
-        <Button size="sm" onClick={onSave} disabled={saving}>
+        <Button size="sm" onClick={handleSaveWithValidation} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
           {data.id ? 'Update' : 'Create'}
         </Button>
@@ -522,6 +557,7 @@ function ItemRow({
   onDelete,
   deleting,
   toggling,
+  warning,
 }: {
   label: string;
   sublabel?: string;
@@ -531,16 +567,34 @@ function ItemRow({
   onDelete: () => void;
   deleting: boolean;
   toggling: boolean;
+  warning?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-lg border border-gray-100 hover:border-gray-200 transition-colors group">
+    <div className={cn(
+      'flex items-center gap-3 px-4 py-3 bg-white rounded-lg border transition-colors group',
+      warning ? 'border-amber-300 bg-amber-50/60 hover:border-amber-400' : 'border-gray-100 hover:border-gray-200'
+    )}>
       <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', !active && 'text-gray-400')}>
-          {label}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className={cn('text-sm font-medium truncate', !active && 'text-gray-400')}>
+            {label}
+          </p>
+          {warning && (
+            <span
+              title={warning}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 shrink-0"
+            >
+              <AlertTriangle className="w-2.5 h-2.5" />
+              Fix required
+            </span>
+          )}
+        </div>
         {sublabel && (
           <p className="text-xs text-gray-500 truncate">{sublabel}</p>
+        )}
+        {warning && (
+          <p className="text-xs text-amber-600 mt-0.5">{warning}</p>
         )}
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -828,13 +882,18 @@ export default function TodayDashboardPage() {
                       <ItemRow
                         key={moment.id}
                         label={moment.name}
-                        sublabel={`${moment.icon} · ${moment.days_away} days away`}
+                        sublabel={`${moment.icon} · ${moment.days_away ?? '—'} days away`}
                         active={moment.is_active}
                         onToggleActive={() => handleToggleActive('cultural_moments', moment.id, moment.is_active)}
                         onEdit={() => openEditForm('cultural_moments', moment)}
                         onDelete={() => handleDelete('cultural_moments', moment.id)}
                         deleting={deletingId === moment.id}
                         toggling={togglingId === moment.id}
+                        warning={
+                          moment.days_away === null || moment.days_away === undefined
+                            ? 'Days Away is missing — edit this card to set a value'
+                            : undefined
+                        }
                       />
                     )
                   )}

@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
         .select('*')
         .order('sort_order');
       if (error) throw error;
-      return NextResponse.json(filterScope(data ?? []));
+      const normalized = (data ?? []).map(m => ({ ...m, days_away: m.days_away ?? 0 }));
+      return NextResponse.json(filterScope(normalized));
     }
 
     if (table === 'whats_new') {
@@ -64,9 +65,11 @@ export async function GET(request: NextRequest) {
       supabase.from('whats_new_items').select('*').order('sort_order'),
     ]);
 
+    const normalizedMoments = (moments.data ?? []).map(m => ({ ...m, days_away: m.days_away ?? 0 }));
+
     return NextResponse.json({
       focus_cards: filterScope(focusCards.data ?? []),
-      cultural_moments: filterScope(moments.data ?? []),
+      cultural_moments: filterScope(normalizedMoments),
       whats_new: filterScope(whatsNew.data ?? []),
     });
   } catch (e: any) {
