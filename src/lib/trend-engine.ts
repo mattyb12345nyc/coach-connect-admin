@@ -44,6 +44,12 @@ const STORAGE_BUCKET = 'culture-images';
 async function uploadImageToStorage(base64Data: string, mimeType: string): Promise<string | null> {
   try {
     const supabase = getAdminClient();
+
+    // Ensure the bucket exists with public access. Silently ignores "already exists" errors.
+    await supabase.storage
+      .createBucket(STORAGE_BUCKET, { public: true, allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'] })
+      .catch(() => {});
+
     const ext = mimeType.includes('png') ? 'png' : 'jpg';
     const filename = `trends/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const buffer = Buffer.from(base64Data, 'base64');

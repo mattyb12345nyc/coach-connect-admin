@@ -154,9 +154,20 @@ function StoreDetailDrawer({
 
   const handleSave = async () => {
     setSaving(true);
+    // #region agent log
+    fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'stores/page.tsx:handleSave',message:'drawer handleSave called',data:{storeId:store.id,editForm},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     try {
       await onSaveManagers(store.id, editForm);
       setEditingManagers(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'stores/page.tsx:handleSave',message:'drawer handleSave SUCCESS',data:{storeId:store.id},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+    } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'stores/page.tsx:handleSave',message:'drawer handleSave ERROR - was silently swallowed before fix',data:{error:err instanceof Error?err.message:String(err)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      toast.error(err instanceof Error ? err.message : 'Failed to update managers');
     } finally {
       setSaving(false);
     }

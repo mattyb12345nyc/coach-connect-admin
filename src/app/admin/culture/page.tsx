@@ -1196,11 +1196,20 @@ export default function CultureFeedPage() {
     if (!editingForm) return;
     const isEdit = !!editingForm.id;
     try {
-      setSaving(true);
-      const method = isEdit ? 'PUT' : 'POST';
-      const body = { ...(isEdit && { id: editingForm.id }), type: editingForm.type, category: editingForm.category, title: editingForm.title, description: editingForm.description, image_url: editingForm.image_url, engagement_text: editingForm.engagement_text, is_published: editingForm.is_published, publish_date: editingForm.publish_date ?? null, sort_order: editingForm.sort_order };
-      const res = await fetch('/api/admin/culture', { method, headers: { 'Content-Type': 'application/json', ...adminHeaders }, body: JSON.stringify(body) });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Save failed'); }
+    setSaving(true);
+    const method = isEdit ? 'PUT' : 'POST';
+    const body = { ...(isEdit && { id: editingForm.id }), type: editingForm.type, category: editingForm.category, title: editingForm.title, description: editingForm.description, image_url: editingForm.image_url, engagement_text: editingForm.engagement_text, is_published: editingForm.is_published, publish_date: editingForm.publish_date ?? null, sort_order: editingForm.sort_order };
+    // #region agent log
+    fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'culture/page.tsx:handleSave',message:'culture save body',data:{method,hasPublishDate:'publish_date' in body,publish_date:body.publish_date},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    const res = await fetch('/api/admin/culture', { method, headers: { 'Content-Type': 'application/json', ...adminHeaders }, body: JSON.stringify(body) });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      // #region agent log
+      fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'culture/page.tsx:handleSave',message:'culture save FAILED',data:{status:res.status,error:(err as any).error},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      throw new Error((err as any).error || 'Save failed');
+    }
       toast.success(isEdit ? 'Item updated' : 'Item created');
       setEditingForm(null);
       await fetchItems();

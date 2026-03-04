@@ -130,6 +130,11 @@ export async function GET() {
       noAnswerMessage = (settingsRes?.data?.no_answer_message ?? settingsRes?.no_answer_message ?? '').toLowerCase();
     } catch { /* non-blocking */ }
 
+    // #region agent log
+    const { appendFileSync } = await import('fs');
+    try { appendFileSync('/Users/mattbritton/Desktop/coach-connect-admin/.cursor/debug-f1ddd0.log', JSON.stringify({sessionId:'f1ddd0',location:'chat-analytics/route.ts',message:'analytics route called',data:{hasApiKey:!!API_KEY,projectId:PROJECT_ID},timestamp:Date.now(),hypothesisId:'D'})+'\n'); } catch {}
+    // #endregion
+
     // Fetch conversations (up to 2 pages = ~100 conversations)
     const [page1Res, page2Res] = await Promise.allSettled([
       cgFetch(`/projects/${PROJECT_ID}/conversations?page=1&order=desc&per_page=50`),
@@ -143,6 +148,10 @@ export async function GET() {
     if (page2Res.status === 'fulfilled') {
       conversations.push(...(page2Res.value?.data?.data ?? []));
     }
+
+    // #region agent log
+    try { appendFileSync('/Users/mattbritton/Desktop/coach-connect-admin/.cursor/debug-f1ddd0.log', JSON.stringify({sessionId:'f1ddd0',location:'chat-analytics/route.ts',message:'conversations fetched',data:{page1Status:page1Res.status,page2Status:page2Res.status,totalConversations:conversations.length,page1Shape:page1Res.status==='fulfilled'?Object.keys(page1Res.value||{}).join(','):'rejected',page1Error:page1Res.status==='rejected'?String(page1Res.reason):'ok'},timestamp:Date.now(),hypothesisId:'D'})+'\n'); } catch {}
+    // #endregion
 
     if (conversations.length === 0) {
       return NextResponse.json({

@@ -65,13 +65,22 @@ export default function PracticeFloorPage() {
   const fetchVoiceAgentStatus = useCallback(async () => {
     setVoiceLoading(true);
     const results: Record<string, { status: 'active' | 'inactive' | 'unknown' }> = {};
+    // #region agent log
+    fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'practice/page.tsx:fetchVoiceAgentStatus',message:'starting voice status fetch',data:{agentCount:VOICE_AGENTS.length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     await Promise.allSettled(
       VOICE_AGENTS.map(async (agent) => {
         try {
           const res = await fetch(`/api/proxy/elevenlabs/agents/${agent.agentId}`);
           results[agent.agentId] = { status: res.ok ? 'active' : 'inactive' };
-        } catch {
+          // #region agent log
+          if (!res.ok) fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'practice/page.tsx:fetchVoiceAgentStatus',message:'voice agent non-OK',data:{agentId:agent.agentId,status:res.status},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+        } catch (err) {
           results[agent.agentId] = { status: 'unknown' };
+          // #region agent log
+          fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'practice/page.tsx:fetchVoiceAgentStatus',message:'voice agent fetch threw',data:{agentId:agent.agentId,error:err instanceof Error?err.message:String(err)},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
         }
       })
     );
