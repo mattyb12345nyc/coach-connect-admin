@@ -68,7 +68,32 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = getAdminClient();
-    const { id } = await request.json();
+    const body = await request.json();
+
+    // Bulk delete test accounts (email contains 'mattyb123')
+    if (body.deleteTestAccounts === true) {
+      const { data: testProfiles, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('email', '%mattyb123%');
+
+      if (fetchError) throw fetchError;
+      if (!testProfiles || testProfiles.length === 0) {
+        return NextResponse.json({ success: true, deleted: 0 });
+      }
+
+      const ids = testProfiles.map(p => p.id);
+      const { error: deleteError } = await supabase
+        .from('profiles')
+        .delete()
+        .in('id', ids);
+
+      if (deleteError) throw deleteError;
+      return NextResponse.json({ success: true, deleted: ids.length });
+    }
+
+    // Single-user soft delete (deactivate)
+    const { id } = body;
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
     const { error: profileError } = await supabase

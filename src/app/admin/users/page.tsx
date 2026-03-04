@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   User, Users, Loader2, Pencil, X, Search, Store, Award, Flame, Trophy,
-  Mail, Shield, Save, CheckCircle, XCircle, Clock, UserCheck, Ban,
+  Mail, Shield, Save, CheckCircle, XCircle, Clock, UserCheck, Ban, Trash2, FlaskConical,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -87,12 +87,21 @@ export default function UsersPage() {
   const [editForm, setEditForm] = useState<Partial<ProfileUser>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [storesList, setStoresList] = useState<{ id: string; store_number: string; store_name: string; city: string; state: string }[]>([]);
+  const [realAvgScore, setRealAvgScore] = useState<number | null | 'loading'>('loading');
+  const [removingTestAccounts, setRemovingTestAccounts] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/stores?status=OPEN')
       .then(r => r.ok ? r.json() : [])
       .then(data => setStoresList(Array.isArray(data) ? data : []))
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/admin/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setRealAvgScore(data?.avgScore ?? null))
+      .catch(() => setRealAvgScore(null));
   }, []);
 
   const fetchUsers = useCallback(async () => {
@@ -124,10 +133,32 @@ export default function UsersPage() {
     total: users.length,
     active: users.filter(u => u.status === 'active').length,
     pending: users.filter(u => u.status === 'pending').length,
-    avgScore: users.length > 0
-      ? Math.round(users.reduce((sum, u) => sum + (u.average_score || 0), 0) / users.length)
-      : 0,
   }), [users]);
+
+  const testAccountCount = useMemo(
+    () => users.filter(u => u.email?.toLowerCase().includes('mattyb123')).length,
+    [users]
+  );
+
+  const handleRemoveTestAccounts = async () => {
+    if (!window.confirm(`Permanently delete all ${testAccountCount} test account(s) with "mattyb123" in the email? This cannot be undone.`)) return;
+    setRemovingTestAccounts(true);
+    try {
+      const res = await fetch('/api/admin/profiles', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteTestAccounts: true }),
+      });
+      if (!res.ok) throw new Error('Failed to remove test accounts');
+      const result = await res.json();
+      toast.success(`Removed ${result.deleted} test account(s)`);
+      await fetchUsers();
+    } catch {
+      toast.error('Failed to remove test accounts');
+    } finally {
+      setRemovingTestAccounts(false);
+    }
+  };
 
   const startEditing = (user: ProfileUser) => {
     setEditingId(user.id);
@@ -203,11 +234,27 @@ export default function UsersPage() {
     <RoleGate minRole="manager">
       <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-coach-black tracking-tight">Users</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Manage user profiles, approve registrations, and assign roles
-            </p>
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-coach-black tracking-tight">Users</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Manage user profiles, approve registrations, and assign roles
+              </p>
+            </div>
+            {testAccountCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRemoveTestAccounts}
+                disabled={removingTestAccounts}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200 self-start sm:self-auto"
+              >
+                {removingTestAccounts
+                  ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                  : <Trash2 className="w-4 h-4 mr-1.5" />}
+                Remove Test Accounts ({testAccountCount})
+              </Button>
+            )}
           </div>
 
           {/* Stats */}
@@ -244,8 +291,14 @@ export default function UsersPage() {
                 <Trophy className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-semibold text-coach-black">{stats.avgScore}%</p>
-                <p className="text-xs text-gray-500">Avg Score</p>
+                {realAvgScore === 'loading' ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400 my-1" />
+                ) : realAvgScore === null ? (
+                  <p className="text-sm font-medium text-gray-400">No scores yet</p>
+                ) : (
+                  <p className="text-2xl font-semibold text-coach-black">{realAvgScore}%</p>
+                )}
+                <p className="text-xs text-gray-500">Avg Practice Score</p>
               </div>
             </Card>
           </div>
@@ -314,6 +367,12 @@ export default function UsersPage() {
                 const StatusIcon = statusConfig.icon;
                 const isEditing = editingId === user.id;
                 const isSaving = saving === user.id;
+                const isTestAccount = user.email?.toLowerCase().includes('mattyb123');
+                // Derive displayed role title from the role field; only show custom job_title
+                // if it's been set to something other than the registration default
+                const displayTitle = (user.job_title && user.job_title !== 'Sales Associate')
+                  ? user.job_title
+                  : roleConfig.label;
 
                 return (
                   <Card
@@ -361,15 +420,19 @@ export default function UsersPage() {
                               <StatusIcon className="h-3 w-3" />
                               {statusConfig.label}
                             </span>
+                            {isTestAccount && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200">
+                                <FlaskConical className="h-3 w-3" />
+                                Test Account
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 mt-0.5">
                             <span className="text-xs text-gray-400 flex items-center gap-1 truncate">
                               <Mail className="h-3 w-3 flex-shrink-0" />
                               {user.email}
                             </span>
-                            {user.job_title && (
-                              <span className="text-xs text-gray-400">{user.job_title}</span>
-                            )}
+                            <span className="text-xs text-gray-400">{displayTitle}</span>
                           </div>
                           {user.stores && (
                             <span className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
