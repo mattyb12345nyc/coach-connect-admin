@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -744,8 +745,9 @@ function BulkInviteModal({
 
 // ─── Main Page ───
 
-export default function InvitationsPage() {
+function InvitationsPageInner() {
   const { user, role, storeId, isAdmin } = useAdminAuth();
+  const searchParams = useSearchParams();
 
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
@@ -790,6 +792,12 @@ export default function InvitationsPage() {
   }, []);
 
   useEffect(() => { fetchInvitations(); fetchStores(); }, [fetchInvitations, fetchStores]);
+
+  // Pre-fill store from URL param (e.g. navigated from Stores detail drawer)
+  useEffect(() => {
+    const prefillStoreId = searchParams.get('prefill_store_id');
+    if (prefillStoreId) setSelectedStoreId(prefillStoreId);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isAdmin && storeId) setSelectedStoreId(storeId);
@@ -1189,5 +1197,13 @@ export default function InvitationsPage() {
         />
       )}
     </RoleGate>
+  );
+}
+
+export default function InvitationsPage() {
+  return (
+    <Suspense fallback={null}>
+      <InvitationsPageInner />
+    </Suspense>
   );
 }
