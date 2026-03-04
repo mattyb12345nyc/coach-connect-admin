@@ -20,7 +20,6 @@ import {
   X,
   RefreshCw,
   Zap,
-  Eye,
   Quote,
   ThumbsUp,
   Share2,
@@ -61,6 +60,15 @@ const EMPTY_ACTION: EditingAction = {
 };
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_COACH_PROJECT_ID ?? '90868';
+
+const COACH_STARTER_QUESTIONS = [
+  "How do I handle a customer who thinks the Tabby is too expensive?",
+  "What's the best way to approach a Gen Z customer who discovered us on TikTok?",
+  "How do I describe the difference between our leather types?",
+  "A customer wants to buy a gift but doesn't know the recipient's style — what do I say?",
+  "How do I upsell a customer who's only browsing?",
+  "A customer loves the bag but says they'll think about it — how do I close?",
+];
 
 async function quickActionApi<T = unknown>(
   method: string,
@@ -231,7 +239,10 @@ export default function ChatSettingsPage() {
       const data: Partial<AgentSettings> = json.data ?? json;
       setSettings(data);
       setOriginalSettings(data);
-      setExampleQuestions(data.example_questions ?? []);
+      // Use saved questions if they exist, otherwise seed with Coach-specific starters
+      setExampleQuestions(
+        data.example_questions?.length ? data.example_questions : COACH_STARTER_QUESTIONS
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load settings');
     } finally {
@@ -647,13 +658,6 @@ export default function ChatSettingsPage() {
                   icon={Download}
                   value={settings.can_export_conversation ?? false}
                   onChange={(v) => updateSetting('can_export_conversation', v)}
-                />
-                <ToggleRow
-                  label="Remove Branding"
-                  description="Hide CustomGPT branding from the chat"
-                  icon={Eye}
-                  value={settings.remove_branding ?? false}
-                  onChange={(v) => updateSetting('remove_branding', v)}
                 />
                 <ToggleRow
                   label="Context-Aware Starters"
