@@ -212,13 +212,52 @@ function CultureForm({
   onSave,
   onCancel,
   saving,
+  adminHeaders = {},
 }: {
   data: CultureFormData;
   onChange: (d: CultureFormData) => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
+  adminHeaders?: Record<string, string>;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a JPEG, PNG, or WebP image.');
+      return;
+    }
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/culture/upload-image', {
+        method: 'POST',
+        headers: adminHeaders,
+        body: formData,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      onChange({ ...data, image_url: json.url });
+      toast.success('Image uploaded');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Image upload failed');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const imagePreviewSrc =
+    data.image_url &&
+    (data.image_url.startsWith('data:') || data.image_url.startsWith('http'))
+      ? data.image_url
+      : null;
+
   return (
     <Card className="p-5 border-coach-gold/30 bg-amber-50/30">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -242,9 +281,42 @@ function CultureForm({
           <Label>Title</Label>
           <Input value={data.title} onChange={(e) => onChange({ ...data, title: e.target.value })} placeholder="Content title" />
         </div>
-        <div className="space-y-1.5">
-          <Label>Image URL</Label>
-          <Input value={data.image_url} onChange={(e) => onChange({ ...data, image_url: e.target.value })} placeholder="https://..." />
+        <div className="space-y-1.5 md:col-span-2">
+          <Label>Image</Label>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploading || saving}
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <ImagePlus className="w-4 h-4 mr-1.5" />}
+                {uploading ? 'Uploading…' : 'Upload image'}
+              </Button>
+              <span className="text-xs text-gray-500">JPEG, PNG or WebP, max 10MB</span>
+            </div>
+            {imagePreviewSrc && (
+              <div className="h-20 w-28 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden shrink-0">
+                <img src={imagePreviewSrc} alt="" className="h-full w-full object-cover" />
+              </div>
+            )}
+          </div>
+          <Input
+            value={data.image_url}
+            onChange={(e) => onChange({ ...data, image_url: e.target.value })}
+            placeholder="Or paste image URL"
+            className="mt-1"
+          />
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <Label>Description</Label>
@@ -1199,17 +1271,8 @@ export default function CultureFeedPage() {
     setSaving(true);
     const method = isEdit ? 'PUT' : 'POST';
     const body = { ...(isEdit && { id: editingForm.id }), type: editingForm.type, category: editingForm.category, title: editingForm.title, description: editingForm.description, image_url: editingForm.image_url, engagement_text: editingForm.engagement_text, is_published: editingForm.is_published, publish_date: editingForm.publish_date ?? null, sort_order: editingForm.sort_order };
-    // #region agent log
-    fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'culture/page.tsx:handleSave',message:'culture save body',data:{method,hasPublishDate:'publish_date' in body,publish_date:body.publish_date},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const res = await fetch('/api/admin/culture', { method, headers: { 'Content-Type': 'application/json', ...adminHeaders }, body: JSON.stringify(body) });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      // #region agent log
-      fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'culture/page.tsx:handleSave',message:'culture save FAILED',data:{status:res.status,error:(err as any).error},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      throw new Error((err as any).error || 'Save failed');
-    }
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error((err as any).error || 'Save failed'); }
       toast.success(isEdit ? 'Item updated' : 'Item created');
       setEditingForm(null);
       await fetchItems();
@@ -1519,7 +1582,7 @@ export default function CultureFeedPage() {
           {/* Add form */}
           {editingForm && !editingForm.id && (
             <div className="mb-6">
-              <CultureForm data={editingForm} onChange={setEditingForm} onSave={handleSave} onCancel={() => setEditingForm(null)} saving={saving} />
+              <CultureForm data={editingForm} onChange={setEditingForm} onSave={handleSave} onCancel={() => setEditingForm(null)} saving={saving} adminHeaders={adminHeaders} />
             </div>
           )}
 
@@ -1542,7 +1605,7 @@ export default function CultureFeedPage() {
               {filteredItems.map((item) =>
                 editingForm?.id === item.id ? (
                   <div key={item.id} className="sm:col-span-2 lg:col-span-3">
-                    <CultureForm data={editingForm} onChange={setEditingForm} onSave={handleSave} onCancel={() => setEditingForm(null)} saving={saving} />
+                    <CultureForm data={editingForm} onChange={setEditingForm} onSave={handleSave} onCancel={() => setEditingForm(null)} saving={saving} adminHeaders={adminHeaders} />
                   </div>
                 ) : (
                   <ContentCard key={item.id} item={item} onEdit={() => setEditingForm({ id: item.id, type: item.type, category: item.category, title: item.title, description: item.description, image_url: item.image_url, engagement_text: item.engagement_text, is_published: item.is_published, publish_date: item.publish_date ?? null, sort_order: item.sort_order })} onDelete={() => handleDelete(item.id)} onTogglePublish={() => handleTogglePublish(item)} deleting={deletingId === item.id} toggling={togglingId === item.id} />
