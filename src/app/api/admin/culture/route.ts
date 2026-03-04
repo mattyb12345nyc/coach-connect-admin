@@ -23,6 +23,14 @@ export async function GET(request: NextRequest) {
 
     let filtered = data ?? [];
 
+    // Exclude items whose publish_date is in the future from the user-facing feed
+    if (audience === 'user') {
+      const now = new Date().toISOString();
+      filtered = filtered.filter(
+        (item: any) => !item.publish_date || item.publish_date <= now
+      );
+    }
+
     if (context.role === 'store_manager') {
       let userRegion: string | null = null;
       if (context.storeId) {

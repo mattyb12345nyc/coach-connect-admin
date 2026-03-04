@@ -25,6 +25,8 @@ import {
   Ban,
   Search,
   ZoomIn,
+  Clock,
+  CalendarClock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -38,7 +40,7 @@ import { useAdminAuth } from '@/contexts/AdminAuthContext';
 // ─── Types ───
 
 type CultureType = 'trend' | 'styling' | 'news';
-type FilterTab = 'all' | CultureType;
+type FilterTab = 'all' | CultureType | 'scheduled';
 
 interface CultureItem {
   id: string;
@@ -50,6 +52,7 @@ interface CultureItem {
   engagement_text: string;
   is_published: boolean;
   published_at: string | null;
+  publish_date: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -98,6 +101,7 @@ const EMPTY_FORM: CultureFormData = {
   image_url: '',
   engagement_text: '',
   is_published: false,
+  publish_date: null,
   sort_order: 0,
 };
 
@@ -106,7 +110,21 @@ const FILTER_TABS: { value: FilterTab; label: string; icon: typeof TrendingUp }[
   { value: 'trend', label: 'Trends', icon: TrendingUp },
   { value: 'styling', label: 'Styling Tips', icon: Palette },
   { value: 'news', label: 'News', icon: Newspaper },
+  { value: 'scheduled', label: 'Scheduled', icon: CalendarClock },
 ];
+
+// ─── Scheduling helpers ───
+
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function isScheduled(item: CultureItem): boolean {
+  return !!item.publish_date && new Date(item.publish_date) > new Date();
+}
 
 const TYPE_CONFIG: Record<CultureType, { label: string; bg: string; text: string; border: string; description: string; icon: typeof TrendingUp }> = {
   trend: { label: 'Trend', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', description: 'What is hot in fashion and culture', icon: TrendingUp },
@@ -246,6 +264,28 @@ function CultureForm({
           <Label>Sort Order</Label>
           <Input type="number" value={data.sort_order} onChange={(e) => onChange({ ...data, sort_order: parseInt(e.target.value) || 0 })} />
         </div>
+        <div className="space-y-1.5">
+          <Label className="flex items-center gap-1.5">
+            <CalendarClock className="w-3.5 h-3.5 text-violet-500" />
+            Publish Date
+            <span className="text-xs font-normal text-gray-400">(optional — leave blank to publish immediately)</span>
+          </Label>
+          <input
+            type="datetime-local"
+            value={toDatetimeLocal(data.publish_date)}
+            onChange={(e) => {
+              const val = e.target.value;
+              onChange({ ...data, publish_date: val ? new Date(val).toISOString() : null });
+            }}
+            className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+          />
+          {data.publish_date && new Date(data.publish_date) > new Date() && (
+            <p className="text-xs text-violet-600 flex items-center gap-1 mt-1">
+              <Clock className="w-3 h-3" />
+              Will appear as <strong>Scheduled</strong> — hidden from associates until this date
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-3 pt-2">
           <Label>Published</Label>
           <PublishToggle published={data.is_published} onChange={(v) => onChange({ ...data, is_published: v })} />
@@ -296,10 +336,22 @@ function ContentCard({
           {item.category && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-white/90 text-gray-700">{item.category}</span>}
         </div>
         <div className="absolute top-3 right-3">
-          <span className={cn('flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', item.is_published ? 'bg-emerald-500/90 text-white' : 'bg-gray-700/80 text-gray-200')}>
-            {item.is_published ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-            {item.is_published ? 'Live' : 'Draft'}
-          </span>
+          {isScheduled(item) ? (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-600/90 text-white">
+              <Clock className="h-3 w-3" />
+              Scheduled
+            </span>
+          ) : item.is_published ? (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/90 text-white">
+              <Eye className="h-3 w-3" />
+              Live
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-700/80 text-gray-200">
+              <EyeOff className="h-3 w-3" />
+              Draft
+            </span>
+          )}
         </div>
         {imageSrc && item.title && (
           <div className="absolute bottom-3 left-3 right-3">
@@ -314,7 +366,14 @@ function ContentCard({
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div className="flex items-center gap-2">
             {toggling ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : <PublishToggle published={item.is_published} onChange={onTogglePublish} />}
-            <span className="text-xs text-gray-400">{item.is_published ? 'Published' : 'Draft'}</span>
+            <span className="text-xs text-gray-400">
+              {isScheduled(item) ? (
+                <span className="text-violet-600 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {new Date(item.publish_date!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </span>
+              ) : item.is_published ? 'Published' : 'Draft'}
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon-sm" onClick={onEdit} title="Edit"><Pencil className="w-3.5 h-3.5" /></Button>
@@ -1118,8 +1177,18 @@ export default function CultureFeedPage() {
   useEffect(() => { fetchCandidates(); }, [fetchCandidates]);
   useEffect(() => { fetchStores(); }, [fetchStores]);
 
-  const filteredItems = activeTab === 'all' ? items : items.filter((i) => i.type === activeTab);
-  const stats = { total: items.length, published: items.filter((i) => i.is_published).length, drafts: items.filter((i) => !i.is_published).length };
+  const filteredItems = useMemo(() => {
+    if (activeTab === 'all') return items;
+    if (activeTab === 'scheduled') return items.filter(isScheduled);
+    return items.filter((i) => i.type === activeTab);
+  }, [items, activeTab]);
+
+  const stats = useMemo(() => ({
+    total: items.length,
+    published: items.filter((i) => i.is_published && !isScheduled(i)).length,
+    drafts: items.filter((i) => !i.is_published).length,
+    scheduled: items.filter(isScheduled).length,
+  }), [items]);
 
   // ─── Handlers ───
 
@@ -1129,7 +1198,7 @@ export default function CultureFeedPage() {
     try {
       setSaving(true);
       const method = isEdit ? 'PUT' : 'POST';
-      const body = { ...(isEdit && { id: editingForm.id }), type: editingForm.type, category: editingForm.category, title: editingForm.title, description: editingForm.description, image_url: editingForm.image_url, engagement_text: editingForm.engagement_text, is_published: editingForm.is_published, sort_order: editingForm.sort_order };
+      const body = { ...(isEdit && { id: editingForm.id }), type: editingForm.type, category: editingForm.category, title: editingForm.title, description: editingForm.description, image_url: editingForm.image_url, engagement_text: editingForm.engagement_text, is_published: editingForm.is_published, publish_date: editingForm.publish_date ?? null, sort_order: editingForm.sort_order };
       const res = await fetch('/api/admin/culture', { method, headers: { 'Content-Type': 'application/json', ...adminHeaders }, body: JSON.stringify(body) });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Save failed'); }
       toast.success(isEdit ? 'Item updated' : 'Item created');
@@ -1389,14 +1458,18 @@ export default function CultureFeedPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             <Card className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-coach-gold/10 flex items-center justify-center"><Sparkles className="h-5 w-5 text-coach-gold" /></div>
               <div><p className="text-2xl font-semibold text-gray-900">{stats.total}</p><p className="text-xs text-gray-500">Total Items</p></div>
             </Card>
             <Card className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center"><Eye className="h-5 w-5 text-emerald-600" /></div>
-              <div><p className="text-2xl font-semibold text-gray-900">{stats.published}</p><p className="text-xs text-gray-500">Published</p></div>
+              <div><p className="text-2xl font-semibold text-gray-900">{stats.published}</p><p className="text-xs text-gray-500">Live</p></div>
+            </Card>
+            <Card className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-violet-50 flex items-center justify-center"><CalendarClock className="h-5 w-5 text-violet-600" /></div>
+              <div><p className="text-2xl font-semibold text-gray-900">{stats.scheduled}</p><p className="text-xs text-gray-500">Scheduled</p></div>
             </Card>
             <Card className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center"><EyeOff className="h-5 w-5 text-gray-500" /></div>
@@ -1423,6 +1496,11 @@ export default function CultureFeedPage() {
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {tab.label}
+                    {tab.value === 'scheduled' && stats.scheduled > 0 && (
+                      <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700">
+                        {stats.scheduled}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1458,7 +1536,7 @@ export default function CultureFeedPage() {
                     <CultureForm data={editingForm} onChange={setEditingForm} onSave={handleSave} onCancel={() => setEditingForm(null)} saving={saving} />
                   </div>
                 ) : (
-                  <ContentCard key={item.id} item={item} onEdit={() => setEditingForm({ id: item.id, type: item.type, category: item.category, title: item.title, description: item.description, image_url: item.image_url, engagement_text: item.engagement_text, is_published: item.is_published, sort_order: item.sort_order })} onDelete={() => handleDelete(item.id)} onTogglePublish={() => handleTogglePublish(item)} deleting={deletingId === item.id} toggling={togglingId === item.id} />
+                  <ContentCard key={item.id} item={item} onEdit={() => setEditingForm({ id: item.id, type: item.type, category: item.category, title: item.title, description: item.description, image_url: item.image_url, engagement_text: item.engagement_text, is_published: item.is_published, publish_date: item.publish_date ?? null, sort_order: item.sort_order })} onDelete={() => handleDelete(item.id)} onTogglePublish={() => handleTogglePublish(item)} deleting={deletingId === item.id} toggling={togglingId === item.id} />
                 )
               )}
             </div>
