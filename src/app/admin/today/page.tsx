@@ -695,9 +695,6 @@ export default function TodayDashboardPage() {
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
-      // #region agent log
-      fetch('http://127.0.0.1:7247/ingest/d78877ce-fd08-4fd0-9385-ac3988fe3944',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f1ddd0'},body:JSON.stringify({sessionId:'f1ddd0',location:'today/page.tsx:fetchAll',message:'today fetchAll called',data:{hasAdminEmail:!!adminHeaders['x-admin-email'],email:adminHeaders['x-admin-email']||'(none - will default to admin role)'},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       const res = await fetch('/api/admin/today', { headers: adminHeaders });
       if (!res.ok) throw new Error('Failed to load data');
       const data = await res.json();
