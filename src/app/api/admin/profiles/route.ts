@@ -43,7 +43,7 @@ export async function PUT(request: NextRequest) {
 
     const allowedFields = [
       'status', 'role', 'store_id', 'job_title', 'first_name', 'last_name',
-      'phone', 'avatar_url', 'hire_date',
+      'display_name', 'phone', 'avatar_url', 'hire_date',
     ];
     const sanitized: Record<string, unknown> = {};
     for (const key of allowedFields) {
