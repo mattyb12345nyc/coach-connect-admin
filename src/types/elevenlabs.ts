@@ -64,6 +64,7 @@ export const VOICE_AGENTS: VoiceAgentConfig[] = [
     scenario: 'Gen Z · First Purchase',
     description: 'A Gen Z college student shopping for her very first luxury Coach bag. Curious and budget-conscious, she needs reassurance and guidance to feel confident in her choice.',
     difficulty: 'Beginner',
+    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
   },
   {
     agentId: 'agent_4901kjty2db9ee4se4kykxz45z2z',
@@ -71,6 +72,7 @@ export const VOICE_AGENTS: VoiceAgentConfig[] = [
     scenario: 'Gen Z · Tabby vs Brooklyn',
     description: 'A Gen Z shopper torn between two iconic Coach styles. Help her understand the key differences and find the bag that best fits her lifestyle and aesthetic.',
     difficulty: 'Beginner',
+    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
   },
   {
     agentId: 'agent_1401kjtwyz8bfetrvtf5745j788s',
@@ -78,6 +80,7 @@ export const VOICE_AGENTS: VoiceAgentConfig[] = [
     scenario: 'Gen Z · Gift Return',
     description: 'A Gen Z customer returning a gifted Coach item that wasn\'t quite right. Handle the return gracefully and turn it into a positive brand experience.',
     difficulty: 'Beginner',
+    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
   },
   // Intermediate — Maya Torres
   {
@@ -86,6 +89,7 @@ export const VOICE_AGENTS: VoiceAgentConfig[] = [
     scenario: 'Tourist · Loyal Customer',
     description: 'A returning Coach loyalist visiting from abroad, looking to add a special piece to her collection. She knows the brand well and has high expectations for service.',
     difficulty: 'Intermediate',
+    imageUrl: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face',
   },
   {
     agentId: 'agent_7901kjtymmv9evcsma5w296dpsrk',
@@ -93,6 +97,7 @@ export const VOICE_AGENTS: VoiceAgentConfig[] = [
     scenario: 'Tourist · Best Value US Purchase',
     description: 'An international tourist focused on getting the best value during her US trip. She\'s comparing prices and styles and needs expert help navigating the range.',
     difficulty: 'Intermediate',
+    imageUrl: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face',
   },
   {
     agentId: 'agent_3001kjtz96b8emnskjjw3frha3e9',
@@ -100,6 +105,7 @@ export const VOICE_AGENTS: VoiceAgentConfig[] = [
     scenario: 'Tourist · Gift Purchase',
     description: 'A tourist buying a Coach gift for someone special back home. Help her find a meaningful piece within her budget that will travel well and impress.',
     difficulty: 'Intermediate',
+    imageUrl: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face',
   },
   // Advanced — Vanessa Liu
   {
@@ -108,6 +114,7 @@ export const VOICE_AGENTS: VoiceAgentConfig[] = [
     scenario: 'Demanding Customer · Quality Complaint',
     description: 'A high-end shopper with a quality complaint about a recent Coach purchase. She\'s frustrated and expects a resolution that matches the brand\'s premium positioning.',
     difficulty: 'Advanced',
+    imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face',
   },
   {
     agentId: 'agent_3001kjtzr87tfyxrkgkz460yw88p',
@@ -115,6 +122,7 @@ export const VOICE_AGENTS: VoiceAgentConfig[] = [
     scenario: 'Demanding Customer · Outlet vs Mainline',
     description: 'A discerning customer pressing hard on the differences between outlet and mainline Coach products. She\'s well-researched and will challenge vague or scripted answers.',
     difficulty: 'Advanced',
+    imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face',
   },
 ];
 
