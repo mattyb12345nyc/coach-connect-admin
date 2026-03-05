@@ -10,6 +10,8 @@ import {
   Clock,
   User,
   Loader2,
+  Play,
+  ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,6 +23,9 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { ElevenLabsAgentConfig, ElevenLabsConversation } from '@/types/elevenlabs';
 import { VOICE_AGENT_IDS } from '@/types/elevenlabs';
+
+const ELEVENLABS_TEST_URL = (agentId: string) =>
+  `https://elevenlabs.io/app/conversational-ai/${agentId}`;
 
 const API = {
   getAgent: (agentId: string) =>
@@ -242,6 +247,29 @@ export default function VoiceAgentsPage() {
                           {getNested(agent.conversation_config, 'agent.first_message') || '—'}
                         </p>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(ELEVENLABS_TEST_URL(id), '_blank', 'noopener,noreferrer');
+                        }}
+                        className="flex items-center gap-1.5 border-coach-gold text-coach-gold hover:bg-coach-gold/10"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        Test Agent
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(ELEVENLABS_TEST_URL(id), '_blank', 'noopener,noreferrer');
+                        }}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-coach-gold hover:bg-coach-gold/10 transition-colors"
+                        title="Open in ElevenLabs"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
                       {expanded ? (
                         <ChevronUp className="w-5 h-5 text-muted-foreground" />
                       ) : (
