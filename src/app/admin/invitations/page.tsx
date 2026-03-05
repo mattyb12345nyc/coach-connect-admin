@@ -79,7 +79,7 @@ const ROLE_OPTIONS = [
   { value: 'regional_manager', label: 'Regional Manager' },
   { value: 'admin', label: 'Admin' },
 ];
-const MAIN_APP_URL = process.env.NEXT_PUBLIC_MAIN_APP_URL || 'https://coach.futureproof.work';
+const MAIN_APP_URL = 'https://coach.futureproof.work';
 
 const VALID_ROLES = new Set(['associate', 'store_manager', 'regional_manager', 'admin']);
 
@@ -181,7 +181,7 @@ function EmailPreviewModal({
   role: string;
   onClose: () => void;
 }) {
-  const previewInviteUrl = `${MAIN_APP_URL}?invite=example-token-preview`;
+  const previewInviteUrl = `${MAIN_APP_URL}/?invite=example-token-preview`;
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
   const roleLabel = ROLE_OPTIONS.find(r => r.value === role)?.label ?? role;
   const storeText = storeName ? ` at ${storeName}` : '';
@@ -883,7 +883,7 @@ function InvitationsPageInner() {
   };
 
   const copyInviteLink = async (invitation: Invitation) => {
-    const url = `${MAIN_APP_URL}?invite=${invitation.token}`;
+    const url = `${MAIN_APP_URL}/?invite=${invitation.token}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(invitation.id);

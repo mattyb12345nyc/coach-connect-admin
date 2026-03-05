@@ -27,9 +27,13 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
+import { PENDING_INVITE_KEY } from '@/components/InviteTokenHandler';
+
 interface Invitation {
   id: string;
   email: string;
+  first_name?: string | null;
+  last_name?: string | null;
   role: string;
   store_id: string | null;
   stores: {
@@ -67,7 +71,10 @@ export default function RegisterPageWrapper() {
 function RegisterPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token') || searchParams.get('invite');
+  const urlToken = searchParams.get('token') || searchParams.get('invite');
+  // When redirected from /?invite= we have no URL param; read from sessionStorage once on mount
+  const [storedToken, setStoredToken] = useState<string | null>(null);
+  const token = urlToken || storedToken;
 
   const [pageState, setPageState] = useState<PageState>('loading');
   const [invitation, setInvitation] = useState<Invitation | null>(null);
@@ -83,15 +90,23 @@ function RegisterPage() {
 
   const isNonAdmin = invitation?.role !== 'admin';
 
+  useEffect(() => {
+    if (urlToken) return;
+    if (typeof window === 'undefined') return;
+    const pending = sessionStorage.getItem(PENDING_INVITE_KEY);
+    if (pending) setStoredToken(pending);
+  }, [urlToken]);
+
   const validateToken = useCallback(async () => {
-    if (!token) {
+    const tokenToValidate = urlToken || (typeof window !== 'undefined' ? sessionStorage.getItem(PENDING_INVITE_KEY) : null) || storedToken;
+    if (!tokenToValidate) {
       setErrorMessage('No invitation token provided.');
       setPageState('invalid');
       return;
     }
 
     try {
-      const res = await fetch(`/api/register?token=${encodeURIComponent(token)}`);
+      const res = await fetch(`/api/register?token=${encodeURIComponent(tokenToValidate)}`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -101,6 +116,7 @@ function RegisterPage() {
           setErrorMessage(data?.error || 'Invalid or expired invitation.');
           setPageState('invalid');
         }
+        if (typeof window !== 'undefined') sessionStorage.removeItem(PENDING_INVITE_KEY);
         return;
       }
 
@@ -108,12 +124,18 @@ function RegisterPage() {
       if (data.store_id) {
         setStoreId(data.store_id);
       }
+      // Pre-populate name from invite record (invites table has first_name, last_name)
+      const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ').trim();
+      if (fullName) setName(fullName);
       setPageState('form');
+      // Consumed: clear pending token from sessionStorage
+      if (typeof window !== 'undefined') sessionStorage.removeItem(PENDING_INVITE_KEY);
     } catch {
       setErrorMessage('Failed to validate invitation. Please try again.');
       setPageState('invalid');
+      if (typeof window !== 'undefined') sessionStorage.removeItem(PENDING_INVITE_KEY);
     }
-  }, [token]);
+  }, [urlToken, storedToken]);
 
   const fetchStores = useCallback(async () => {
     try {
@@ -128,9 +150,17 @@ function RegisterPage() {
   }, []);
 
   useEffect(() => {
-    validateToken();
     fetchStores();
-  }, [validateToken, fetchStores]);
+  }, [fetchStores]);
+
+  useEffect(() => {
+    if (token) {
+      validateToken();
+    } else if (typeof window !== 'undefined' && !sessionStorage.getItem(PENDING_INVITE_KEY)) {
+      setErrorMessage('No invitation token provided.');
+      setPageState('invalid');
+    }
+  }, [token, validateToken]);
 
   useEffect(() => {
     if (pageState !== 'success') return;

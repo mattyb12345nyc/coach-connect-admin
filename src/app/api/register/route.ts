@@ -10,22 +10,31 @@ export async function GET(request: NextRequest) {
     const email = request.nextUrl.searchParams.get('email');
 
     if (token) {
-      const { data, error } = await supabase
-        .from('invitations')
+      // Try invites table first (admin-created invites), then legacy invitations
+      let inviteTable: 'invites' | 'invitations' = 'invites';
+      let { data, error } = await supabase
+        .from('invites')
         .select('*, stores(store_number, store_name, city, state)')
         .eq('token', token)
         .eq('status', 'pending')
         .single();
 
       if (error || !data) {
-        return NextResponse.json({ error: 'Invalid or expired invitation' }, { status: 404 });
+        const fallback = await supabase
+          .from('invitations')
+          .select('*, stores(store_number, store_name, city, state)')
+          .eq('token', token)
+          .eq('status', 'pending')
+          .single();
+        if (fallback.error || !fallback.data) {
+          return NextResponse.json({ error: 'Invalid or expired invitation' }, { status: 404 });
+        }
+        data = fallback.data;
+        inviteTable = 'invitations';
       }
 
       if (new Date(data.expires_at) < new Date()) {
-        await supabase
-          .from('invitations')
-          .update({ status: 'expired' })
-          .eq('id', data.id);
+        await supabase.from(inviteTable).update({ status: 'expired' }).eq('id', data.id);
         return NextResponse.json({ error: 'Invitation has expired' }, { status: 410 });
       }
 
@@ -33,15 +42,26 @@ export async function GET(request: NextRequest) {
     }
 
     if (email) {
-      const { data } = await supabase
-        .from('invitations')
+      let { data } = await supabase
+        .from('invites')
         .select('*, stores(store_number, store_name, city, state)')
         .eq('email', email)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
+      if (!data) {
+        const fallback = await supabase
+          .from('invitations')
+          .select('*, stores(store_number, store_name, city, state)')
+          .eq('email', email)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (fallback.data) data = fallback.data;
+      }
       if (data) return NextResponse.json(data);
     }
 
@@ -62,37 +82,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
     }
 
-    // Look up invitation
-    let invitation = null;
+    // Look up invitation: try invites first (admin-created), then legacy invitations
+    let invitation: Record<string, unknown> | null = null;
+    let inviteTable: 'invites' | 'invitations' = 'invites';
     if (token) {
-      const { data } = await supabase
-        .from('invitations')
-        .select('*')
-        .eq('token', token)
-        .eq('status', 'pending')
-        .single();
-      invitation = data;
+      let res = await supabase.from('invites').select('*').eq('token', token).eq('status', 'pending').single();
+      if (res.data) {
+        invitation = res.data;
+      } else {
+        res = await supabase.from('invitations').select('*').eq('token', token).eq('status', 'pending').single();
+        if (res.data) {
+          invitation = res.data;
+          inviteTable = 'invitations';
+        }
+      }
     } else {
-      const { data } = await supabase
-        .from('invitations')
-        .select('*')
-        .eq('email', email)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      invitation = data;
+      let res = await supabase.from('invites').select('*').eq('email', email).eq('status', 'pending').order('created_at', { ascending: false }).limit(1).single();
+      if (res.data) {
+        invitation = res.data;
+      } else {
+        res = await supabase.from('invitations').select('*').eq('email', email).eq('status', 'pending').order('created_at', { ascending: false }).limit(1).single();
+        if (res.data) {
+          invitation = res.data;
+          inviteTable = 'invitations';
+        }
+      }
     }
 
     if (!invitation) {
       return NextResponse.json({ error: 'No valid invitation found' }, { status: 404 });
     }
 
-    if (new Date(invitation.expires_at) < new Date()) {
-      await supabase
-        .from('invitations')
-        .update({ status: 'expired' })
-        .eq('id', invitation.id);
+    if (new Date(invitation.expires_at as string) < new Date()) {
+      await supabase.from(inviteTable).update({ status: 'expired' }).eq('id', invitation.id);
       return NextResponse.json({ error: 'Invitation has expired' }, { status: 410 });
     }
 
@@ -104,9 +126,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingUser) {
-      // Mark invitation accepted
       await supabase
-        .from('invitations')
+        .from(inviteTable)
         .update({ status: 'accepted', accepted_at: new Date().toISOString() })
         .eq('id', invitation.id);
 
@@ -114,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve store info
-    const finalStoreId = store_id || invitation.store_id;
+    const finalStoreId = store_id || (invitation.store_id as string | null);
     let storeName = '';
     let storeNumber = '';
     let city = '';
@@ -138,13 +159,13 @@ export async function POST(request: NextRequest) {
       .insert({
         email,
         name,
-        title: invitation.role === 'manager' ? 'Store Manager' : 'Sales Associate',
+        title: (invitation.role as string) === 'store_manager' || (invitation.role as string) === 'manager' ? 'Store Manager' : 'Sales Associate',
         store: storeName,
         store_number: storeNumber,
         city,
         store_id: finalStoreId,
         avatar_url: avatar_url || null,
-        role: invitation.role,
+        role: invitation.role as string,
         is_active: true,
       })
       .select()
@@ -154,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     // Mark invitation accepted
     await supabase
-      .from('invitations')
+      .from(inviteTable)
       .update({ status: 'accepted', accepted_at: new Date().toISOString() })
       .eq('id', invitation.id);
 
