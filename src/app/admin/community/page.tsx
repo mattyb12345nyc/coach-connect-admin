@@ -69,7 +69,20 @@ const STATUS_CONFIG: Record<CommunityPost['status'], { label: string; bg: string
   removed: { label: 'Removed', bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
 };
 
-function formatRelativeTime(dateStr: string): string {
+function getInitials(name: string | null | undefined): string {
+  if (name == null || typeof name !== 'string') return '?';
+  const trimmed = (name || '').trim();
+  if (!trimmed) return '?';
+  return trimmed
+    .split(' ')
+    .map(n => (n || '').charAt(0))
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '?';
+}
+
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (dateStr == null || dateStr === '') return '';
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -288,17 +301,18 @@ export default function CommunityPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {safePosts.map(post => {
+              {safePosts.map((post, index) => {
                 const typeConfig = POST_TYPE_CONFIG[post.post_type ?? 'insight'] ?? POST_TYPE_CONFIG.insight;
                 const statusConfig = STATUS_CONFIG[post.status ?? 'active'] ?? STATUS_CONFIG.active;
                 const TypeIcon = typeConfig.icon;
                 const isExpanded = expandedPosts.has(post.id);
                 const isUpdating = updatingPosts.has(post.id);
-                const shouldTruncate = post.content.length > 200;
+                const content = post.content ?? '';
+                const shouldTruncate = content.length > 200;
 
                 return (
                   <Card
-                    key={post.id}
+                    key={post?.id ?? `post-${index}`}
                     className={cn(
                       'p-5 transition-all',
                       post.is_pinned && 'ring-1 ring-coach-gold/40 bg-coach-gold/[0.02]',
@@ -310,7 +324,7 @@ export default function CommunityPage() {
                       {/* Avatar */}
                       <div className="h-9 w-9 rounded-full bg-coach-mahogany/10 flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-semibold text-coach-mahogany">
-                          {post.author_name.charAt(0).toUpperCase()}
+                          {getInitials(post.author_name)}
                         </span>
                       </div>
 
@@ -318,10 +332,10 @@ export default function CommunityPage() {
                         {/* Author + Meta Row */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-coach-black">
-                            {post.author_name}
+                            {post.author_name ?? 'Unknown'}
                           </span>
                           <span className="text-xs text-gray-400">
-                            {post.author_role} · {post.author_store}
+                            {post.author_role ?? ''} · {post.author_store ?? ''}
                           </span>
                           <span className="text-xs text-gray-400">
                             {formatRelativeTime(post.created_at)}
@@ -350,8 +364,8 @@ export default function CommunityPage() {
                         <div className="mt-2">
                           <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                             {shouldTruncate && !isExpanded
-                              ? post.content.slice(0, 200) + '...'
-                              : post.content}
+                              ? content.slice(0, 200) + '...'
+                              : content}
                           </p>
                           {shouldTruncate && (
                             <button
@@ -368,15 +382,15 @@ export default function CommunityPage() {
                           <div className="flex items-center gap-4 text-xs text-gray-400">
                             <span className="flex items-center gap-1">
                               <Heart className="h-3.5 w-3.5" />
-                              {post.likes_count}
+                              {post.likes_count ?? 0}
                             </span>
                             <span className="flex items-center gap-1">
                               <MessageCircle className="h-3.5 w-3.5" />
-                              {post.comments_count}
+                              {post.comments_count ?? 0}
                             </span>
                             <span className="flex items-center gap-1">
                               <Bookmark className="h-3.5 w-3.5" />
-                              {post.saves_count}
+                              {post.saves_count ?? 0}
                             </span>
                           </div>
 
