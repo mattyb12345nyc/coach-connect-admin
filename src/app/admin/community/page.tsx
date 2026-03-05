@@ -105,7 +105,7 @@ export default function CommunityPage() {
       const res = await fetch(`/api/admin/community${qs ? `?${qs}` : ''}`);
       if (!res.ok) throw new Error('Failed to fetch posts');
       const data = await res.json();
-      setPosts(data);
+      setPosts(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Failed to load community posts');
     } finally {
@@ -171,10 +171,11 @@ export default function CommunityPage() {
     });
   };
 
+  const safePosts = Array.isArray(posts) ? posts : [];
   const stats = {
-    total: posts.length,
-    active: posts.filter(p => p.status === 'active').length,
-    flagged: posts.filter(p => p.is_flagged).length,
+    total: safePosts.length,
+    active: safePosts.filter(p => p?.status === 'active').length,
+    flagged: safePosts.filter(p => p?.is_flagged).length,
   };
 
   return (
@@ -279,7 +280,7 @@ export default function CommunityPage() {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-6 w-6 animate-spin text-coach-gold" />
             </div>
-          ) : posts.length === 0 ? (
+          ) : safePosts.length === 0 ? (
             <Card className="py-16 flex flex-col items-center justify-center text-center">
               <Users className="h-10 w-10 text-gray-300 mb-3" />
               <p className="text-sm font-medium text-gray-500">No posts found</p>
@@ -287,9 +288,9 @@ export default function CommunityPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {posts.map(post => {
-                const typeConfig = POST_TYPE_CONFIG[post.post_type];
-                const statusConfig = STATUS_CONFIG[post.status];
+              {safePosts.map(post => {
+                const typeConfig = POST_TYPE_CONFIG[post.post_type ?? 'insight'] ?? POST_TYPE_CONFIG.insight;
+                const statusConfig = STATUS_CONFIG[post.status ?? 'active'] ?? STATUS_CONFIG.active;
                 const TypeIcon = typeConfig.icon;
                 const isExpanded = expandedPosts.has(post.id);
                 const isUpdating = updatingPosts.has(post.id);
