@@ -205,7 +205,7 @@ function EmailPreviewModal({
         <div className="p-5 overflow-y-auto max-h-[70vh]">
           <div className="text-xs text-gray-400 space-y-1 mb-4 pb-4 border-b border-gray-100">
             <div><span className="font-medium text-gray-600">To:</span> {recipientEmail || 'recipient@example.com'}</div>
-            <div><span className="font-medium text-gray-600">Subject:</span> You've been invited to join Coach Pulse</div>
+            <div><span className="font-medium text-gray-600">Subject:</span> {"You've been invited to join Coach Pulse"}</div>
           </div>
 
           {/* Email body */}
@@ -225,8 +225,8 @@ function EmailPreviewModal({
             <div className="bg-white px-6 py-6 space-y-4">
               <p className="text-sm text-gray-800">{greeting}</p>
               <p className="text-sm text-gray-700 leading-relaxed">
-                You've been invited to join <strong>Coach Pulse</strong> as a <strong>{roleLabel}</strong>{storeText}.
-                Coach Pulse is your team's hub for product knowledge, training, and daily inspiration.
+                {"You've"} been invited to join <strong>Coach Pulse</strong> as a <strong>{roleLabel}</strong>{storeText}.
+                Coach Pulse is your team&apos;s hub for product knowledge, training, and daily inspiration.
               </p>
               <p className="text-sm text-gray-700 leading-relaxed">
                 Click the button below to create your account and get started. This invitation expires in <strong>7 days</strong>.
@@ -248,7 +248,7 @@ function EmailPreviewModal({
               </div>
 
               <p className="text-xs text-gray-400 text-center">
-                If you weren't expecting this invitation, you can ignore this email.
+                If you weren&apos;t expecting this invitation, you can ignore this email.
               </p>
             </div>
 
