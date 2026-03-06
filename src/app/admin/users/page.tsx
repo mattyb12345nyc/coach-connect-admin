@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import {
   User, Users, Loader2, Pencil, X, Search, Store, Award, Flame, Trophy,
   Mail, Shield, Save, CheckCircle, XCircle, Clock, UserCheck, Ban, Trash2, FlaskConical,
+  UserPlus, Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -89,6 +90,10 @@ export default function UsersPage() {
   const [storesList, setStoresList] = useState<{ id: string; store_number: string; store_name: string; city: string; state: string }[]>([]);
   const [realAvgScore, setRealAvgScore] = useState<number | null | 'loading'>('loading');
   const [removingTestAccounts, setRemovingTestAccounts] = useState(false);
+  const [inviteName, setInviteName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteStoreId, setInviteStoreId] = useState('');
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/stores?status=OPEN')
@@ -157,6 +162,30 @@ export default function UsersPage() {
       toast.error('Failed to remove test accounts');
     } finally {
       setRemovingTestAccounts(false);
+    }
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendingInvite(true);
+    try {
+      const res = await fetch('/api/admin/beta-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail, name: inviteName, storeId: inviteStoreId }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to send invite');
+      }
+      toast.success('Invite sent successfully');
+      setInviteName('');
+      setInviteEmail('');
+      setInviteStoreId('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send invite');
+    } finally {
+      setSendingInvite(false);
     }
   };
 
@@ -302,6 +331,68 @@ export default function UsersPage() {
               </div>
             </Card>
           </div>
+
+          {/* Invite User */}
+          <Card className="p-5 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-8 w-8 rounded-lg bg-coach-gold/10 flex items-center justify-center">
+                <UserPlus className="h-4 w-4 text-coach-gold" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-coach-black">Invite User</h3>
+                <p className="text-xs text-gray-500">Send a beta invite to a new user</p>
+              </div>
+            </div>
+            <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+              <div className="space-y-1.5">
+                <Label weight="semibold" size="xs">Name</Label>
+                <Input
+                  value={inviteName}
+                  onChange={e => setInviteName(e.target.value)}
+                  placeholder="Jane Smith"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label weight="semibold" size="xs">Email</Label>
+                <Input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  placeholder="jane@example.com"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label weight="semibold" size="xs">Store</Label>
+                <select
+                  value={inviteStoreId}
+                  onChange={e => setInviteStoreId(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+                >
+                  <option value="">Select a store…</option>
+                  {storesList.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.store_number} — {s.store_name} ({s.city}, {s.state})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                type="submit"
+                disabled={sendingInvite || !inviteName || !inviteEmail || !inviteStoreId}
+                className="bg-coach-gold hover:bg-coach-gold/90 text-white"
+              >
+                {sendingInvite ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4 mr-1.5" />
+                )}
+                Send Invite
+              </Button>
+            </form>
+          </Card>
 
           {/* Status Tabs */}
           <Card className="p-3 mb-4">
