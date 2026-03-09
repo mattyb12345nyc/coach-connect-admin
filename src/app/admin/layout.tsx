@@ -20,6 +20,7 @@ import {
   History,
   Settings,
   UserCircle,
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminAuthProvider, useAdminAuth, type AdminRole } from '@/contexts/AdminAuthContext';
@@ -55,6 +56,7 @@ const navSections: NavSection[] = [
       { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'store_manager' },
       { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'store_manager' },
       { id: 'invitations', label: 'Invitations', icon: Mail, href: '/admin/invitations', minRole: 'store_manager' },
+      { id: 'scenario-generator', label: 'Scenario Generator', icon: Wand2, href: '/admin/scenario-generator', minRole: 'admin' },
     ],
   },
   {
