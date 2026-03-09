@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
         description: candidate.description,
         image_url: candidate.image_url,
         engagement_text: candidate.engagement_text,
+        status: 'active',
         is_published: true,
         published_at: new Date().toISOString(),
         sort_order: 0,

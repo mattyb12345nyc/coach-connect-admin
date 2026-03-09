@@ -332,8 +332,8 @@ export function truncateText(text: string, maxLength: number): string {
  * - At least 20 alphanumeric characters after the pipe
  * 
  * @example
- * isValidApiKey('123|abcdefghijklmnopqrst') // Returns: true
- * isValidApiKey('7727|QxxxpM5Dxxxxz9CI3lGwyOBNoRav7oMdgFMxxxxefded9d9x') // Returns: true
+ * isValidApiKey('123|exampleapikeyvaluetest') // Returns: true
+ * isValidApiKey('7727|anotherexampleapikeyvalue') // Returns: true
  * isValidApiKey('12|short') // Returns: false (too few digits/chars)
  * isValidApiKey('no-pipe') // Returns: false (wrong format)
  * isValidApiKey('') // Returns: false (empty)
@@ -350,7 +350,7 @@ export function isValidApiKey(apiKey: string): boolean {
   apiKey = apiKey.trim();
   
   // CustomGPT API key format: starts with digits followed by | then alphanumeric string
-  // Example: 7727|QxxxpM5Dxxxxz9CI3lGwyOBNoRav7oMdgFMxxxxefded9d9x
+  // Example: 7727|anotherexampleapikeyvalue
   // Must have at least 3 digits, pipe, and at least 20 characters after pipe
   return /^\d{3,}\|[a-zA-Z0-9]{20,}$/.test(apiKey);
 }

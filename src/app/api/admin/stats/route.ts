@@ -19,8 +19,8 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('practice_sessions')
-      .select('total_score, status')
-      .eq('status', 'completed');
+      .select('overall_score, scoring_status')
+      .eq('scoring_status', 'completed');
 
     // Table doesn't exist or permission denied — no scores yet
     if (error) {
@@ -29,7 +29,7 @@ export async function GET() {
 
     const sessions = data ?? [];
     const withScore = sessions.filter(
-      s => s.total_score !== null && s.total_score !== undefined && !isNaN(Number(s.total_score))
+      s => s.overall_score !== null && s.overall_score !== undefined && !isNaN(Number(s.overall_score))
     );
 
     if (withScore.length === 0) {
@@ -37,7 +37,7 @@ export async function GET() {
     }
 
     const avg = Math.round(
-      withScore.reduce((sum, s) => sum + Number(s.total_score), 0) / withScore.length
+      withScore.reduce((sum, s) => sum + Number(s.overall_score), 0) / withScore.length
     );
 
     return NextResponse.json({ avgScore: avg, totalSessions: sessions.length });

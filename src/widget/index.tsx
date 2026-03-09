@@ -111,7 +111,7 @@ export interface CustomGPTWidgetConfig {
  * // Direct mode with API key (no proxy needed)
  * const widget = CustomGPTWidget.init({
  *   agentId: '123',
- *   apiKey: 'your-api-key',
+ *   apiKey: process.env.CUSTOMGPT_API_KEY,
  *   mode: 'floating',
  *   enableConversationManagement: true
  * });

@@ -31,7 +31,6 @@ import { Toaster } from 'sonner';
 import { DemoModeProvider } from '@/components/demo/DemoModeProvider';
 import { PostHogProvider } from '@/components/PostHogProvider';
 import { GoogleAnalytics, GTMNoScript } from '@/components/GoogleAnalytics';
-import { InviteTokenHandler } from '@/components/InviteTokenHandler';
 import "./globals.css";
 
 /**
@@ -197,7 +196,6 @@ export default function RootLayout({
         {/* Add global providers here */}
         <PostHogProvider>
           <DemoModeProvider>
-            <InviteTokenHandler />
             {children}
             {/* PWA Manager for install prompts and updates - DISABLED 
                 Uncomment the line below to enable PWA install prompts

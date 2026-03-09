@@ -27,6 +27,7 @@ import {
   ZoomIn,
   Clock,
   CalendarClock,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { getSupabase } from '@/lib/supabase';
 import { RoleGate } from '@/components/admin/RoleGate';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
@@ -41,6 +43,8 @@ import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
 type CultureType = 'trend' | 'styling' | 'news';
 type FilterTab = 'all' | CultureType | 'scheduled';
+type FeedStatus = 'pending_review' | 'active' | 'rejected' | null;
+type FeedStatusFilter = 'all' | 'active' | 'pending_review' | 'rejected' | 'legacy';
 
 interface CultureItem {
   id: string;
@@ -51,13 +55,18 @@ interface CultureItem {
   image_url: string;
   engagement_text: string;
   is_published: boolean;
+  status: FeedStatus;
+  submitted_by?: string | null;
+  submitted_by_name?: string | null;
+  submitted_at: string | null;
   published_at: string | null;
   publish_date: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
-  scope_type?: 'global' | 'store';
+  scope_type?: 'global' | 'region' | 'store';
   store_id?: string | null;
+  store_region?: string | null;
 }
 
 type ImageStatus = 'none' | 'pending' | 'processing' | 'completed' | 'failed';
@@ -87,7 +96,7 @@ interface StoreSummary {
   region: string;
 }
 
-type CultureFormData = Omit<CultureItem, 'id' | 'published_at' | 'created_at' | 'updated_at'> & {
+type CultureFormData = Omit<CultureItem, 'id' | 'status' | 'submitted_by' | 'submitted_by_name' | 'submitted_at' | 'published_at' | 'created_at' | 'updated_at'> & {
   id?: string;
 };
 
@@ -113,6 +122,14 @@ const FILTER_TABS: { value: FilterTab; label: string; icon: typeof TrendingUp }[
   { value: 'scheduled', label: 'Scheduled', icon: CalendarClock },
 ];
 
+const FEED_STATUS_FILTERS: { value: FeedStatusFilter; label: string }[] = [
+  { value: 'all', label: 'Published (Active + Legacy)' },
+  { value: 'active', label: 'Active' },
+  { value: 'legacy', label: 'Legacy (No Status)' },
+  { value: 'pending_review', label: 'Pending Review' },
+  { value: 'rejected', label: 'Rejected' },
+];
+
 // ─── Scheduling helpers ───
 
 function toDatetimeLocal(iso: string | null | undefined): string {
@@ -124,6 +141,43 @@ function toDatetimeLocal(iso: string | null | undefined): string {
 
 function isScheduled(item: CultureItem): boolean {
   return !!item.publish_date && new Date(item.publish_date) > new Date();
+}
+
+function formatTimestamp(value: string | null | undefined): string {
+  if (!value) return '—';
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function getFeedStatusLabel(status: FeedStatus): string {
+  switch (status) {
+    case 'pending_review':
+      return 'Pending Review';
+    case 'active':
+      return 'Active';
+    case 'rejected':
+      return 'Rejected';
+    default:
+      return 'Legacy';
+  }
+}
+
+function getFeedStatusClasses(status: FeedStatus): string {
+  switch (status) {
+    case 'pending_review':
+      return 'bg-amber-50 text-amber-700';
+    case 'active':
+      return 'bg-emerald-50 text-emerald-700';
+    case 'rejected':
+      return 'bg-red-50 text-red-700';
+    default:
+      return 'bg-gray-100 text-gray-600';
+  }
 }
 
 const TYPE_CONFIG: Record<CultureType, { label: string; bg: string; text: string; border: string; description: string; icon: typeof TrendingUp }> = {
@@ -434,6 +488,16 @@ function ContentCard({
       <div className="p-4">
         {!imageSrc && <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 mb-1">{item.title}</h3>}
         {item.description && <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">{item.description}</p>}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', getFeedStatusClasses(item.status))}>
+            {getFeedStatusLabel(item.status)}
+          </span>
+          {item.submitted_at && (
+            <span className="text-xs text-gray-400">
+              Submitted {formatTimestamp(item.submitted_at)}
+            </span>
+          )}
+        </div>
         {item.engagement_text && <p className="text-xs font-medium text-coach-mahogany mb-3">{item.engagement_text}</p>}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div className="flex items-center gap-2">
@@ -444,7 +508,7 @@ function ContentCard({
                   <Clock className="w-3 h-3" />
                   {new Date(item.publish_date!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </span>
-              ) : item.is_published ? 'Published' : 'Draft'}
+              ) : item.is_published ? `Published ${item.published_at ? formatTimestamp(item.published_at) : ''}`.trim() : 'Draft'}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -1284,11 +1348,102 @@ function PendingReviewBanner({ count, onClick }: { count: number; onClick: () =>
         <Sparkles className="w-5 h-5 text-coach-gold" />
       </div>
       <div className="flex-1 text-left">
-        <p className="text-sm font-semibold text-gray-900">{count} trend{count !== 1 ? 's' : ''} pending review</p>
-        <p className="text-xs text-gray-500">Generated trends are waiting for your approval</p>
+        <p className="text-sm font-semibold text-gray-900">{count} generated trend{count !== 1 ? 's' : ''} ready to review</p>
+        <p className="text-xs text-gray-500">Review AI-generated candidates separately from submitted pulse cards</p>
       </div>
       <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-coach-gold transition-colors" />
     </button>
+  );
+}
+
+function FeedPendingReviewSection({
+  items,
+  processingId,
+  errors,
+  onApprove,
+  onReject,
+}: {
+  items: CultureItem[];
+  processingId: string | null;
+  errors: Record<string, string>;
+  onApprove: (item: CultureItem) => Promise<void>;
+  onReject: (item: CultureItem) => Promise<void>;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <Card className="p-5 mb-6 border-amber-200/70 bg-amber-50/40">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Pending Review</h2>
+          <p className="text-sm text-gray-500">
+            {items.length} pulse {items.length === 1 ? 'card is' : 'cards are'} waiting for approval
+          </p>
+        </div>
+        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+          Oldest first
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {items.map((item) => {
+          const isProcessing = processingId === item.id;
+          const submittedBy = item.submitted_by_name || 'Unknown submitter';
+
+          return (
+            <div key={item.id} className="rounded-xl border border-amber-200/70 bg-white p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', TYPE_CONFIG[item.type].bg, TYPE_CONFIG[item.type].text)}>
+                      {TYPE_CONFIG[item.type].label}
+                    </span>
+                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', getFeedStatusClasses(item.status))}>
+                      {getFeedStatusLabel(item.status)}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900">{item.title}</h3>
+                  {item.description && (
+                    <p className="mt-1 text-sm text-gray-600 leading-relaxed">{item.description}</p>
+                  )}
+                  <div className="mt-3 grid gap-1 text-xs text-gray-500 sm:grid-cols-2">
+                    <span>Submitted by: {submittedBy}</span>
+                    <span>Submitted at: {formatTimestamp(item.submitted_at)}</span>
+                  </div>
+                  {errors[item.id] && (
+                    <div className="mt-3 inline-flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                      <span>{errors[item.id]}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 lg:pl-4">
+                  <Button
+                    size="sm"
+                    onClick={() => onApprove(item)}
+                    disabled={isProcessing}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {isProcessing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onReject(item)}
+                    disabled={isProcessing}
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
@@ -1306,7 +1461,9 @@ export default function CultureFeedPage() {
   const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [reviewingFeedItemId, setReviewingFeedItemId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [feedStatusFilter, setFeedStatusFilter] = useState<FeedStatusFilter>('all');
   const [editingForm, setEditingForm] = useState<CultureFormData | null>(null);
   const [stores, setStores] = useState<StoreSummary[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -1317,6 +1474,7 @@ export default function CultureFeedPage() {
   const [realWorldAccuracy, setRealWorldAccuracy] = useState(false);
   const [upscale4k, setUpscale4k] = useState(false);
   const [pollingIds, setPollingIds] = useState<string[]>([]);
+  const [pendingReviewErrors, setPendingReviewErrors] = useState<Record<string, string>>({});
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const adminHeaders = useMemo<Record<string, string>>(
@@ -1364,17 +1522,45 @@ export default function CultureFeedPage() {
   useEffect(() => { fetchCandidates(); }, [fetchCandidates]);
   useEffect(() => { fetchStores(); }, [fetchStores]);
 
+  const pendingReviewItems = useMemo(
+    () =>
+      items
+        .filter((item) => item.status === 'pending_review' && item.is_published === false)
+        .slice()
+        .sort((a, b) => {
+          const aTime = a.submitted_at ? new Date(a.submitted_at).getTime() : Number.MAX_SAFE_INTEGER;
+          const bTime = b.submitted_at ? new Date(b.submitted_at).getTime() : Number.MAX_SAFE_INTEGER;
+          return aTime - bTime;
+        }),
+    [items]
+  );
+
+  const statusFilteredItems = useMemo(() => {
+    switch (feedStatusFilter) {
+      case 'active':
+        return items.filter((item) => item.status === 'active');
+      case 'pending_review':
+        return items.filter((item) => item.status === 'pending_review');
+      case 'rejected':
+        return items.filter((item) => item.status === 'rejected');
+      case 'legacy':
+        return items.filter((item) => item.status == null);
+      default:
+        return items.filter((item) => item.status === 'active' || item.status == null);
+    }
+  }, [feedStatusFilter, items]);
+
   const filteredItems = useMemo(() => {
-    if (activeTab === 'all') return items;
-    if (activeTab === 'scheduled') return items.filter(isScheduled);
-    return items.filter((i) => i.type === activeTab);
-  }, [items, activeTab]);
+    if (activeTab === 'all') return statusFilteredItems;
+    if (activeTab === 'scheduled') return statusFilteredItems.filter(isScheduled);
+    return statusFilteredItems.filter((i) => i.type === activeTab);
+  }, [statusFilteredItems, activeTab]);
 
   const stats = useMemo(() => ({
     total: items.length,
-    published: items.filter((i) => i.is_published && !isScheduled(i)).length,
-    drafts: items.filter((i) => !i.is_published).length,
-    scheduled: items.filter(isScheduled).length,
+    published: items.filter((i) => (i.status === 'active' || i.status == null) && i.is_published && !isScheduled(i)).length,
+    drafts: items.filter((i) => !i.is_published && i.status !== 'pending_review').length,
+    scheduled: items.filter((i) => (i.status === 'active' || i.status == null) && isScheduled(i)).length,
   }), [items]);
 
   // ─── Handlers ───
@@ -1405,6 +1591,80 @@ export default function CultureFeedPage() {
     try { setTogglingId(item.id); const res = await fetch('/api/admin/culture', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...adminHeaders }, body: JSON.stringify({ id: item.id, is_published: !item.is_published }) }); if (!res.ok) throw new Error('Update failed'); const updated = await res.json(); setItems((prev) => prev.map((i) => (i.id === item.id ? updated : i))); }
     catch { toast.error('Failed to update status'); }
     finally { setTogglingId(null); }
+  };
+
+  const handleApprovePendingFeedItem = async (item: CultureItem) => {
+    setReviewingFeedItemId(item.id);
+    setPendingReviewErrors((prev) => {
+      const next = { ...prev };
+      delete next[item.id];
+      return next;
+    });
+
+    try {
+      const supabase = getSupabase();
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        throw new Error('Could not access the current admin session. Please sign in again.');
+      }
+
+      const res = await fetch('/api/admin/culture/publish-pulse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          ...adminHeaders,
+        },
+        body: JSON.stringify({ cardId: item.id }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload.error || 'Approval failed');
+      }
+
+      toast.success('Pulse approved and published');
+      await fetchItems();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Approval failed';
+      setPendingReviewErrors((prev) => ({ ...prev, [item.id]: message }));
+      toast.error(message);
+    } finally {
+      setReviewingFeedItemId(null);
+    }
+  };
+
+  const handleRejectPendingFeedItem = async (item: CultureItem) => {
+    setReviewingFeedItemId(item.id);
+    setPendingReviewErrors((prev) => {
+      const next = { ...prev };
+      delete next[item.id];
+      return next;
+    });
+
+    try {
+      const res = await fetch('/api/admin/culture', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        body: JSON.stringify({ id: item.id, status: 'rejected', is_published: false }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload.error || 'Reject failed');
+      }
+
+      await fetchItems();
+      toast.success('Pulse rejected');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Reject failed';
+      setPendingReviewErrors((prev) => ({ ...prev, [item.id]: message }));
+      toast.error(message);
+    } finally {
+      setReviewingFeedItemId(null);
+    }
   };
 
   const handleGenerateTrends = async (params: { topic: string; customQuery: string; season: string; region: string; type: CultureType; scope: 'global' | 'region' | 'store'; scopeStoreId: string; scopeRegion: string }) => {
@@ -1682,33 +1942,57 @@ export default function CultureFeedPage() {
             </Card>
           </div>
 
+          <FeedPendingReviewSection
+            items={pendingReviewItems}
+            processingId={reviewingFeedItemId}
+            errors={pendingReviewErrors}
+            onApprove={handleApprovePendingFeedItem}
+            onReject={handleRejectPendingFeedItem}
+          />
+
           {/* Pending review banner */}
           <PendingReviewBanner count={candidates.length} onClick={() => { setWizardInitialPhase('review'); setWizardOpen(true); }} />
 
           {/* Filter tabs */}
           <Card className="p-3 mb-6">
-            <div className="flex rounded-lg bg-gray-100 p-0.5">
-              {FILTER_TABS.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
-                      activeTab === tab.value ? 'bg-white text-coach-mahogany shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {tab.label}
-                    {tab.value === 'scheduled' && stats.scheduled > 0 && (
-                      <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700">
-                        {stats.scheduled}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex rounded-lg bg-gray-100 p-0.5">
+                {FILTER_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+                        activeTab === tab.value ? 'bg-white text-coach-mahogany shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {tab.label}
+                      {tab.value === 'scheduled' && stats.scheduled > 0 && (
+                        <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700">
+                          {stats.scheduled}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-gray-500 whitespace-nowrap">Status</Label>
+                <select
+                  value={feedStatusFilter}
+                  onChange={(e) => setFeedStatusFilter(e.target.value as FeedStatusFilter)}
+                  className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-coach-gold/30 focus:border-coach-gold"
+                >
+                  {FEED_STATUS_FILTERS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </Card>
 

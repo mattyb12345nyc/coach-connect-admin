@@ -1,14 +1,15 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+export default function Home({
+  searchParams,
+}: {
+  searchParams?: { invite?: string; token?: string };
+}) {
+  const token = searchParams?.invite || searchParams?.token;
 
-export default function Home() {
-  const router = useRouter();
+  if (token) {
+    redirect(`/invite?token=${encodeURIComponent(token)}`);
+  }
 
-  useEffect(() => {
-    router.replace('/admin/today');
-  }, [router]);
-
-  return null;
+  redirect('/admin/today');
 }

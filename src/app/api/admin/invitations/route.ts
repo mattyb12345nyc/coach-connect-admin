@@ -6,6 +6,10 @@ export const dynamic = 'force-dynamic';
 
 const MAIN_APP_URL = 'https://coach.futureproof.work';
 
+function buildInviteUrl(token: string): string {
+  return `${MAIN_APP_URL}/invite?token=${token}`;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = getAdminClient();
@@ -98,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     if (insertError) throw insertError;
 
-    const inviteUrl = `${MAIN_APP_URL}/?invite=${token}`;
+    const inviteUrl = buildInviteUrl(token);
 
     const { error: authError } = await supabase.auth.admin.inviteUserByEmail(normalizedEmail, {
       redirectTo: inviteUrl,

@@ -13,7 +13,13 @@ function getBaseUrl(request: NextRequest): string {
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-process-secret');
-  const expected = process.env.IMAGE_PROCESS_SECRET || 'internal';
+  const expected = process.env.IMAGE_PROCESS_SECRET;
+  if (!expected) {
+    return NextResponse.json(
+      { error: 'IMAGE_PROCESS_SECRET is not configured' },
+      { status: 500 }
+    );
+  }
   if (secret !== expected) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

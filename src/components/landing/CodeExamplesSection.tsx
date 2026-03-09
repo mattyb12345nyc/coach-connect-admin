@@ -43,7 +43,7 @@ export default function handler(req, res) {
     code: `<script src="https://cdn.customgpt.ai/widget.js"></script>
 <script>
   CustomGPT.aiWidget.init({
-    apiKey: 'your-api-key',
+    apiKey: process.env.CUSTOMGPT_API_KEY,
     agentId: 'your-agent-id',
     theme: 'light',
     position: 'bottom-right',

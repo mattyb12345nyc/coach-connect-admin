@@ -89,7 +89,13 @@ export async function POST(request: NextRequest) {
     };
 
     const baseUrl = getBaseUrl(request);
-    const processSecret = process.env.IMAGE_PROCESS_SECRET || 'internal';
+    const processSecret = process.env.IMAGE_PROCESS_SECRET;
+    if (!processSecret) {
+      return NextResponse.json(
+        { error: 'IMAGE_PROCESS_SECRET is not configured' },
+        { status: 500 }
+      );
+    }
     fetch(`${baseUrl}/api/admin/culture/trends/images/process`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-process-secret': processSecret },

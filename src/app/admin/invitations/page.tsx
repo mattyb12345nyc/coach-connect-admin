@@ -83,6 +83,10 @@ const MAIN_APP_URL = 'https://coach.futureproof.work';
 
 const VALID_ROLES = new Set(['associate', 'store_manager', 'regional_manager', 'admin']);
 
+function buildInviteUrl(token: string): string {
+  return `${MAIN_APP_URL}/invite?token=${token}`;
+}
+
 // ─── Utilities ───
 
 function formatDate(dateStr: string | null): string {
@@ -181,7 +185,7 @@ function EmailPreviewModal({
   role: string;
   onClose: () => void;
 }) {
-  const previewInviteUrl = `${MAIN_APP_URL}/?invite=example-token-preview`;
+  const previewInviteUrl = buildInviteUrl('example-token-preview');
   const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
   const roleLabel = ROLE_OPTIONS.find(r => r.value === role)?.label ?? role;
   const storeText = storeName ? ` at ${storeName}` : '';
@@ -883,7 +887,7 @@ function InvitationsPageInner() {
   };
 
   const copyInviteLink = async (invitation: Invitation) => {
-    const url = `${MAIN_APP_URL}/?invite=${invitation.token}`;
+    const url = buildInviteUrl(invitation.token);
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(invitation.id);
