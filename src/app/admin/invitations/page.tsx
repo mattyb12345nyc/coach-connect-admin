@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import {
   Mail, Plus, Copy, Trash2, Loader2, Check, Clock, UserPlus, Shield, X,
   Upload, FileText, Building2, Eye, AlertCircle, CheckCircle2,
-  Users, ChevronDown, ExternalLink,
+  Users, ChevronDown, ExternalLink, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -758,6 +758,8 @@ function InvitationsPageInner() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [revokeConfirm, setRevokeConfirm] = useState<Invitation | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
 
@@ -890,6 +892,28 @@ function InvitationsPageInner() {
       toast.error(error instanceof Error ? error.message : 'Failed to revoke invitation');
     } finally {
       setDeletingId(null);
+      setRevokeConfirm(null);
+    }
+  };
+
+  const handleResendInvite = async (id: string) => {
+    setResendingId(id);
+    try {
+      const res = await fetch('/api/admin/invitations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? 'Failed to resend invitation');
+      }
+      fetchInvitations();
+      toast.success(data.email_sent ? 'Invitation resent' : 'New link generated (email delivery unavailable)');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to resend invitation');
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -1170,7 +1194,15 @@ function InvitationsPageInner() {
                           </Button>
                           <Button
                             size="sm" variant="outline"
-                            onClick={() => handleRevokeInvite(invitation.id)}
+                            onClick={() => handleResendInvite(invitation.id)}
+                            disabled={resendingId === invitation.id}
+                          >
+                            {resendingId === invitation.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                            Resend
+                          </Button>
+                          <Button
+                            size="sm" variant="outline"
+                            onClick={() => setRevokeConfirm(invitation)}
                             disabled={deletingId === invitation.id}
                             className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
                           >
@@ -1206,6 +1238,37 @@ function InvitationsPageInner() {
           role={inviteRole}
           onClose={() => setEmailPreviewOpen(false)}
         />
+      )}
+
+      {revokeConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setRevokeConfirm(null)} />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900">Revoke Invitation</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to revoke this invite for <strong>{revokeConfirm.email}</strong>? They will no longer be able to use this link.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setRevokeConfirm(null)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleRevokeInvite(revokeConfirm.id)}
+                disabled={deletingId === revokeConfirm.id}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deletingId === revokeConfirm.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <X className="w-3.5 h-3.5 mr-1" />}
+                Revoke
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </RoleGate>
   );

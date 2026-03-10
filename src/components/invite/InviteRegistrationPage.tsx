@@ -34,6 +34,7 @@ interface Invitation {
   last_name?: string | null;
   role: string;
   store_id: string | null;
+  region: string | null;
   stores: {
     store_number: string;
     store_name: string;
@@ -83,7 +84,8 @@ function InviteRegistrationContent() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarError, setAvatarError] = useState(false);
 
-  const isNonAdmin = invitation?.role !== 'admin';
+  const requiresStore = invitation?.role === 'associate' || invitation?.role === 'store_manager' || invitation?.role === 'manager';
+  const isRegionalManager = invitation?.role === 'regional_manager';
 
   const validateToken = useCallback(async () => {
     if (!token) {
@@ -260,7 +262,7 @@ function InviteRegistrationContent() {
                   </div>
                 </div>
 
-                {isNonAdmin && (
+                {requiresStore && (
                   <div className="space-y-2">
                     <Label htmlFor="store" required>Store</Label>
                     <Select value={storeId} onValueChange={setStoreId} required>
@@ -283,6 +285,18 @@ function InviteRegistrationContent() {
                         Pre-assigned: {invitation.stores.store_name} ({invitation.stores.city}, {invitation.stores.state})
                       </p>
                     )}
+                  </div>
+                )}
+
+                {isRegionalManager && invitation.region && (
+                  <div className="space-y-2">
+                    <Label>Region</Label>
+                    <Input
+                      value={invitation.region}
+                      readOnly
+                      className="bg-muted/50 cursor-not-allowed"
+                      icon={<Store className="h-4 w-4" />}
+                    />
                   </div>
                 )}
 
@@ -333,7 +347,7 @@ function InviteRegistrationContent() {
                   size="lg"
                   loading={submitting}
                   loadingText="Creating account..."
-                  disabled={!name.trim() || (isNonAdmin && !storeId)}
+                  disabled={!name.trim() || (requiresStore && !storeId)}
                 >
                   Complete Registration
                   <ArrowRight className="h-4 w-4 ml-2" />

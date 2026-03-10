@@ -162,6 +162,61 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const supabase = getAdminClient();
+    const { id } = await request.json();
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+
+    const { data: existingInvite, error: fetchError } = await supabase
+      .from('invites')
+      .select('id, status, email')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!existingInvite) {
+      return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
+    }
+    if (existingInvite.status !== 'pending') {
+      return NextResponse.json({ error: 'Only pending invites can be resent' }, { status: 409 });
+    }
+
+    const newToken = crypto.randomBytes(32).toString('hex');
+
+    const { data: updatedInvite, error: updateError } = await supabase
+      .from('invites')
+      .update({
+        token: newToken,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    const inviteUrl = buildInviteUrl(newToken);
+
+    const { error: authError } = await supabase.auth.admin.inviteUserByEmail(existingInvite.email, {
+      redirectTo: inviteUrl,
+    });
+
+    return NextResponse.json({
+      invitation: updatedInvite,
+      invite_url: inviteUrl,
+      email_sent: !authError,
+      email_error: authError?.message ?? null,
+    });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   const adminUser = await getValidatedAdminUser(request);
   if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

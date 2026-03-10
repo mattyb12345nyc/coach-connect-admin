@@ -134,8 +134,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ user: existingUser, already_existed: true });
     }
 
-    // Resolve store info
-    const finalStoreId = store_id || (invitation.store_id as string | null);
+    const inviteRole = (invitation.role as string) || 'associate';
+    const inviteRegion = (invitation.region as string | null) || null;
+    const isRegionalManager = inviteRole === 'regional_manager';
+
+    // Regional managers don't need a store; other non-admin roles do.
+    const finalStoreId = isRegionalManager || inviteRole === 'admin'
+      ? null
+      : store_id || (invitation.store_id as string | null);
+
     let storeName = '';
     let storeNumber = '';
     let city = '';
@@ -153,19 +160,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create app_users record
+    const titleByRole: Record<string, string> = {
+      admin: 'Admin',
+      regional_manager: 'Regional Manager',
+      store_manager: 'Store Manager',
+      manager: 'Store Manager',
+    };
+
     const { data: newUser, error: userError } = await supabase
       .from('app_users')
       .insert({
         email,
         name,
-        title: (invitation.role as string) === 'store_manager' || (invitation.role as string) === 'manager' ? 'Store Manager' : 'Sales Associate',
-        store: storeName,
-        store_number: storeNumber,
-        city,
+        title: titleByRole[inviteRole] ?? 'Sales Associate',
+        store: storeName || null,
+        store_number: storeNumber || null,
+        city: city || null,
         store_id: finalStoreId,
+        region: isRegionalManager ? inviteRegion : null,
         avatar_url: avatar_url || null,
-        role: invitation.role as string,
+        role: inviteRole,
         is_active: true,
       })
       .select()
