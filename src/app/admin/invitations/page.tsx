@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { config } from '@/lib/config';
 
 // ─── Types ───
 
@@ -79,12 +80,11 @@ const ROLE_OPTIONS = [
   { value: 'regional_manager', label: 'Regional Manager' },
   { value: 'admin', label: 'Admin' },
 ];
-const MAIN_APP_URL = 'https://coach.futureproof.work';
 
 const VALID_ROLES = new Set(['associate', 'store_manager', 'regional_manager', 'admin']);
 
 function buildInviteUrl(token: string): string {
-  return `${MAIN_APP_URL}/invite?token=${token}`;
+  return config.inviteUrl(token);
 }
 
 // ─── Utilities ───
@@ -259,7 +259,7 @@ function EmailPreviewModal({
             {/* Footer */}
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 text-center">
               <p className="text-xs text-gray-400">
-                Sent via Coach Pulse Admin · {MAIN_APP_URL}
+                Sent via Coach Pulse Admin · {config.adminAppUrl}
               </p>
             </div>
           </div>

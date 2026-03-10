@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase';
+import { config } from '@/lib/config';
 import { canManageScope, getRequestAdminContext } from '@/lib/admin-permissions';
 
 export const dynamic = 'force-dynamic';
-
-const PUBLISH_PULSE_URL = 'https://coach-connect-demo.netlify.app/.netlify/functions/publish-pulse';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: permission.reason }, { status: 403 });
     }
 
-    const response = await fetch(PUBLISH_PULSE_URL, {
+    const response = await fetch(config.netlifyFunctions.publishPulse, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

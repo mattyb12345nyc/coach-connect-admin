@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getValidatedAdminUser } from '@/lib/admin-auth';
+import { config } from '@/lib/config';
 import { getAdminClient } from '@/lib/supabase';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
-
-const SEND_INVITE_URL = 'https://coach.futureproof.work/.netlify/functions/send-invite';
 
 export async function POST(request: NextRequest) {
   const adminUser = await getValidatedAdminUser(request);
@@ -23,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const res = await fetch(SEND_INVITE_URL, {
+    const res = await fetch(config.netlifyFunctions.sendInvite, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: trimmedEmail, name: trimmedName, storeId }),

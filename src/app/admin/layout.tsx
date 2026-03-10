@@ -22,6 +22,7 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { config } from '@/lib/config';
 import { AdminAuthProvider, useAdminAuth, type AdminRole } from '@/contexts/AdminAuthContext';
 
 interface NavItem {
@@ -167,7 +168,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             Sign Out
           </button>
           <a
-            href="https://coach.futureproof.work/"
+            href={config.consumerAppUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-coach-gold text-white hover:bg-coach-gold/90 transition-colors"
@@ -211,7 +212,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               </div>
             )}
             <a
-              href="https://coach.futureproof.work/"
+              href={config.consumerAppUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"

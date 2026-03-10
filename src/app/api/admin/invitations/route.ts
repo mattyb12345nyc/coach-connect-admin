@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getValidatedAdminUser } from '@/lib/admin-auth';
+import { config } from '@/lib/config';
 import { getAdminClient } from '@/lib/supabase';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-const MAIN_APP_URL = 'https://coach.futureproof.work';
-
 function buildInviteUrl(token: string): string {
-  return `${MAIN_APP_URL}/invite?token=${token}`;
+  return config.inviteUrl(token);
 }
 
 export async function GET(request: NextRequest) {
