@@ -201,6 +201,65 @@ test('computePracticeStats returns aggregate totals, distributions, and leaders'
   assert.equal(stats.top_performing_store?.average_score, 87);
 });
 
+test('computePracticeStats only counts scored sessions as completed', () => {
+  const sessions = [
+    {
+      id: 's1',
+      user_id: 'u1',
+      overall_score: 90,
+      created_at: '2026-03-09T12:00:00.000Z',
+      persona: 'Zoe',
+      difficulty: 'beginner',
+      scoring_status: 'scored',
+      duration_seconds: 120,
+      scores: {},
+      highlights: [],
+      summary: null,
+      transcript: [],
+      scoring_error: null,
+    },
+    {
+      id: 's2',
+      user_id: 'u1',
+      overall_score: 88,
+      created_at: '2026-03-08T12:00:00.000Z',
+      persona: 'Maya',
+      difficulty: 'intermediate',
+      scoring_status: 'pending_rescore',
+      duration_seconds: 120,
+      scores: {},
+      highlights: [],
+      summary: null,
+      transcript: [],
+      scoring_error: null,
+    },
+    {
+      id: 's3',
+      user_id: 'u1',
+      overall_score: 70,
+      created_at: '2026-03-07T12:00:00.000Z',
+      persona: 'Vanessa',
+      difficulty: 'advanced',
+      scoring_status: 'scoring_failed',
+      duration_seconds: 120,
+      scores: {},
+      highlights: [],
+      summary: null,
+      transcript: [],
+      scoring_error: 'timeout',
+    },
+  ];
+
+  const stats = computePracticeStats({
+    sessions,
+    profilesByUserId: new Map(),
+    storesById: new Map(),
+  });
+
+  assert.equal(stats.completed_sessions, 1);
+  assert.equal(stats.average_score, 90);
+});
+
 test('normalizeTranscript handles array, nested messages, and plain strings', () => {
   assert.deepEqual(
     normalizeTranscript([

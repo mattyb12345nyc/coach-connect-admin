@@ -8,7 +8,7 @@ export type AdminRole = 'associate' | 'store_manager' | 'regional_manager' | 'ad
 
 interface AdminUser {
   id: string;
-  email: string;
+  email: string | null;
   first_name: string;
   last_name: string;
   display_name: string;

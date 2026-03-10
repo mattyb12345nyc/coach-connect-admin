@@ -34,7 +34,6 @@ type ValidatedAdminProfile = {
   first_name: string | null;
   last_name: string | null;
   display_name: string | null;
-  email: string | null;
   avatar_url: string | null;
 };
 
@@ -83,7 +82,6 @@ function createSupabaseMock(options: {
                           first_name: 'Admin',
                           last_name: 'User',
                           display_name: 'Admin User',
-                          email: 'admin@example.com',
                           avatar_url: null,
                           ...options.profile,
                         }

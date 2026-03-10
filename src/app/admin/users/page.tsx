@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  User, Users, Loader2, Pencil, X, Search, Store, Award, Flame, Trophy,
+  User, Users, Loader2, Pencil, X, Search, Store, Award, Trophy,
   Mail, Shield, Save, CheckCircle, XCircle, Clock, UserCheck, Ban, Trash2, FlaskConical,
   UserPlus,
 } from 'lucide-react';
@@ -17,7 +17,7 @@ import { RoleGate } from '@/components/admin/RoleGate';
 
 interface ProfileUser {
   id: string;
-  email: string;
+  email: string | null;
   first_name: string;
   last_name: string;
   display_name: string;
@@ -25,13 +25,10 @@ interface ProfileUser {
   role: string;
   status: string;
   store_id: string | null;
-  job_title: string;
-  phone: string | null;
   practice_sessions: number;
-  average_score: number;
-  day_streak: number;
+  average_score: number | null;
   created_at: string;
-  last_active_at: string | null;
+  is_approved?: boolean | null;
   stores: {
     id: string;
     store_number: string;
@@ -184,10 +181,8 @@ export default function UsersPage() {
           role: editForm.role,
           status: editForm.status,
           store_id: editForm.store_id,
-          job_title: editForm.job_title,
           first_name: editForm.first_name,
           last_name: editForm.last_name,
-          phone: editForm.phone,
         }),
       });
       if (!res.ok) {
@@ -393,11 +388,6 @@ export default function UsersPage() {
                 const isEditing = editingId === user.id;
                 const isSaving = saving === user.id;
                 const isTestAccount = user.email?.toLowerCase().includes('mattyb123');
-                // Derive displayed role title from the role field; only show custom job_title
-                // if it's been set to something other than the registration default
-                const displayTitle = (user.job_title && user.job_title !== 'Sales Associate')
-                  ? user.job_title
-                  : roleConfig.label;
 
                 return (
                   <Card
@@ -453,11 +443,15 @@ export default function UsersPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-3 mt-0.5">
-                            <span className="text-xs text-gray-400 flex items-center gap-1 truncate">
-                              <Mail className="h-3 w-3 flex-shrink-0" />
-                              {user.email}
-                            </span>
-                            <span className="text-xs text-gray-400">{displayTitle}</span>
+                            {user.email ? (
+                              <span className="text-xs text-gray-400 flex items-center gap-1 truncate">
+                                <Mail className="h-3 w-3 flex-shrink-0" />
+                                {user.email}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-300">No email available</span>
+                            )}
+                            <span className="text-xs text-gray-400">{roleConfig.label}</span>
                           </div>
                           {user.stores && (
                             <span className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
@@ -468,7 +462,7 @@ export default function UsersPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                          {user.average_score > 0 && (
+                          {user.average_score != null && user.average_score > 0 && (
                             <span className="flex items-center gap-1 text-xs text-amber-600" title="Avg Score">
                               <Trophy className="h-3.5 w-3.5" />
                               {user.average_score}%
@@ -478,12 +472,6 @@ export default function UsersPage() {
                             <span className="flex items-center gap-1 text-xs text-coach-gold" title="Sessions">
                               <Award className="h-3.5 w-3.5" />
                               {user.practice_sessions}
-                            </span>
-                          )}
-                          {user.day_streak > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-orange-500" title="Streak">
-                              <Flame className="h-3.5 w-3.5" />
-                              {user.day_streak}d
                             </span>
                           )}
                         </div>
@@ -570,21 +558,6 @@ export default function UsersPage() {
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label weight="semibold">Job Title</Label>
-                            <Input
-                              value={editForm.job_title ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, job_title: e.target.value }))}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label weight="semibold">Phone</Label>
-                            <Input
-                              value={editForm.phone ?? ''}
-                              onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                              placeholder="+1 (555) 000-0000"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
                             <Label weight="semibold">Role</Label>
                             <select
                               value={editForm.role ?? 'associate'}
@@ -644,7 +617,6 @@ export default function UsersPage() {
                           </Button>
                           <span className="ml-auto text-xs text-gray-400">
                             Joined {formatDate(user.created_at)}
-                            {user.last_active_at && ` · Last active ${formatDate(user.last_active_at)}`}
                           </span>
                         </div>
                       </div>

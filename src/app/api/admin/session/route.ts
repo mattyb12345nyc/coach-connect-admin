@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     user: {
       id: adminUser.profile.id,
-      email: adminUser.profile.email,
+      email: adminUser.user.email ?? null,
       first_name: adminUser.profile.first_name,
       last_name: adminUser.profile.last_name,
       display_name: adminUser.profile.display_name,

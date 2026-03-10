@@ -24,7 +24,6 @@ export interface ValidatedAdminProfile {
   first_name: string | null;
   last_name: string | null;
   display_name: string | null;
-  email: string | null;
   avatar_url: string | null;
 }
 
@@ -105,7 +104,7 @@ export async function getValidatedAdminUserWithClient(
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, role, status, store_id, first_name, last_name, display_name, email, avatar_url')
+      .select('id, role, status, store_id, first_name, last_name, display_name, avatar_url')
       .eq('id', user.id)
       .single();
 

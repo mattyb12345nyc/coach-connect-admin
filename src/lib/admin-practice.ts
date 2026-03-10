@@ -36,6 +36,13 @@ export interface PracticeProfileRecord {
   store_id: string | null;
 }
 
+export interface RealProfileRecord extends PracticeProfileRecord {
+  role: string;
+  status: string;
+  is_approved?: boolean | null;
+  created_at: string;
+}
+
 export interface PracticeStoreRecord {
   id: string;
   store_name: string | null;
@@ -70,6 +77,11 @@ export interface PracticeStats {
     average_score: number;
     sessions_count: number;
   } | null;
+}
+
+export interface UserPracticeMetrics {
+  practice_sessions: number;
+  average_score: number | null;
 }
 
 export interface NormalizedTranscriptEntry {
@@ -112,6 +124,10 @@ function getDisplayName(profile?: PracticeProfileRecord | null): string {
 function roundAverage(total: number, count: number): number | null {
   if (count === 0) return null;
   return Math.round(total / count);
+}
+
+export function isCompletedPracticeSession(session: Pick<PracticeSessionRecord, 'overall_score' | 'scoring_status'>): boolean {
+  return session.scoring_status === 'scored' && session.overall_score !== null;
 }
 
 export function parsePracticeSessionsQuery(params: URLSearchParams): PracticeSessionsQuery {
@@ -204,6 +220,59 @@ export function normalizeScoreBreakdown(scores: unknown): NormalizedScoreBreakdo
   });
 }
 
+export function buildUserPracticeMetrics(
+  sessions: Array<Pick<PracticeSessionRecord, 'user_id' | 'overall_score' | 'scoring_status'>>
+): Map<string, UserPracticeMetrics> {
+  const metrics = new Map<string, {
+    totalSessions: number;
+    scoredSessions: number;
+    scoreTotal: number;
+  }>();
+
+  for (const session of sessions) {
+    const current = metrics.get(session.user_id) ?? {
+      totalSessions: 0,
+      scoredSessions: 0,
+      scoreTotal: 0,
+    };
+
+    current.totalSessions += 1;
+
+    if (isCompletedPracticeSession(session)) {
+      current.scoredSessions += 1;
+      current.scoreTotal += session.overall_score ?? 0;
+    }
+
+    metrics.set(session.user_id, current);
+  }
+
+  return new Map(
+    Array.from(metrics.entries()).map(([userId, value]) => [
+      userId,
+      {
+        practice_sessions: value.totalSessions,
+        average_score: roundAverage(value.scoreTotal, value.scoredSessions),
+      },
+    ])
+  );
+}
+
+export function mergeProfilesWithAuthData<T extends RealProfileRecord>(
+  profiles: T[],
+  emailByUserId: Map<string, string | null>,
+  metricsByUserId: Map<string, UserPracticeMetrics>
+) {
+  return profiles.map((profile) => {
+    const metrics = metricsByUserId.get(profile.id);
+    return {
+      ...profile,
+      email: emailByUserId.get(profile.id) ?? null,
+      average_score: metrics?.average_score ?? null,
+      practice_sessions: metrics?.practice_sessions ?? 0,
+    };
+  });
+}
+
 export function computePracticeStats({
   sessions,
   profilesByUserId,
@@ -216,7 +285,7 @@ export function computePracticeStats({
   now?: Date;
 }): PracticeStats {
   const completedSessions = sessions.filter(
-    (session) => session.scoring_status !== null && session.overall_score !== null
+    (session) => isCompletedPracticeSession(session)
   );
 
   const totalScore = completedSessions.reduce(

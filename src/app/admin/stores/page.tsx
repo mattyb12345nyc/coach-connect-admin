@@ -68,13 +68,13 @@ interface Associate {
   first_name: string | null;
   last_name: string | null;
   display_name: string | null;
-  email: string;
+  email: string | null;
   role: string;
   status: string;
-  last_active_at: string | null;
   average_score: number | null;
   practice_sessions: number | null;
   avatar_url: string | null;
+  created_at?: string | null;
 }
 
 interface StoreMetrics {
@@ -299,7 +299,7 @@ function StoreDetailDrawer({
                 {associates.map(a => {
                   const roleConf = ROLE_CONFIG[a.role] ?? ROLE_CONFIG.associate;
                   const initials = getInitials(a.first_name, a.last_name, a.display_name);
-                  const displayName = a.display_name || [a.first_name, a.last_name].filter(Boolean).join(' ') || a.email;
+                  const displayName = a.display_name || [a.first_name, a.last_name].filter(Boolean).join(' ') || a.email || 'Unknown Associate';
                   return (
                     <div
                       key={a.id}
@@ -341,17 +341,13 @@ function StoreDetailDrawer({
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">
-                          <span className="text-xs text-gray-400 flex items-center gap-0.5 truncate">
-                            <Mail className="w-3 h-3 flex-shrink-0" />
-                            {a.email}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                          {a.last_active_at && (
-                            <span className="flex items-center gap-0.5">
-                              <Clock className="w-3 h-3" />
-                              Active {formatDate(a.last_active_at)}
+                          {a.email ? (
+                            <span className="text-xs text-gray-400 flex items-center gap-0.5 truncate">
+                              <Mail className="w-3 h-3 flex-shrink-0" />
+                              {a.email}
                             </span>
+                          ) : (
+                            <span className="text-xs text-gray-300">No email available</span>
                           )}
                         </div>
                       </div>

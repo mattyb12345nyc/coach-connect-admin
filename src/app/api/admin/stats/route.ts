@@ -8,7 +8,14 @@ export const dynamic = 'force-dynamic';
  * GET /api/admin/stats
  * Returns aggregate stats for the Users dashboard:
  *  - avgScore: real average practice score across all sessions (null if no data)
- *  - totalSessions: total number of completed practice sessions
+ *  - totalSessions: total number of scored practice sessions
+ *
+ * Valid scoring_status values in this codebase/schema are:
+ *  - 'scored'
+ *  - 'scoring_failed'
+ *  - 'pending_rescore'
+ *
+ * Only 'scored' sessions should count as completed/scored sessions.
  *
  * Queries the practice_sessions table. If that table does not exist yet
  * (Supabase returns a relation-not-found error), returns null values so the
@@ -24,7 +31,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('practice_sessions')
       .select('overall_score, scoring_status')
-      .eq('scoring_status', 'completed');
+      .eq('scoring_status', 'scored');
 
     // Table doesn't exist or permission denied — no scores yet
     if (error) {

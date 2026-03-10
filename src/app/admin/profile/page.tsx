@@ -157,7 +157,7 @@ export default function AdminProfilePage() {
   const avatarSrc = previewUrl ?? localAvatarUrl ?? user.avatar_url ?? null;
   const displayName = isEditing
     ? [editFirstName, editLastName].filter(Boolean).join(' ') || user.display_name
-    : user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.email;
+    : user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.email || 'User';
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">

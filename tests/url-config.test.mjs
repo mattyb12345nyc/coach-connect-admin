@@ -11,7 +11,6 @@ const wiringFiles = [
   'src/app/api/admin/invitations/route.ts',
   'src/app/admin/invitations/page.tsx',
   'src/app/admin/layout.tsx',
-  'src/app/api/admin/beta-invite/route.ts',
   'src/app/api/admin/culture/publish-pulse/route.ts',
 ];
 
