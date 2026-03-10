@@ -22,6 +22,7 @@
 */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { getAdminClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -53,7 +54,10 @@ async function elevenLabsFetch(path: string, options: RequestInit = {}) {
   });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const supabase = getAdminClient();
     const { data, error } = await supabase
@@ -71,6 +75,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   let createdAgentId: string | null = null;
 
   try {

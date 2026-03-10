@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { Redis } from '@upstash/redis';
 
 function getRedis() {
@@ -10,7 +11,10 @@ function getRedis() {
   return new Redis({ url, token });
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const health: any = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,

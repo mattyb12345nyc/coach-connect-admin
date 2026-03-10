@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSupabase } from '@/lib/supabase';
+import { clearAdminAuthTokenCookie, setAdminAuthTokenCookie } from '@/lib/admin-auth-client';
 
 export type AdminRole = 'associate' | 'store_manager' | 'regional_manager' | 'admin' | 'super_admin';
 
@@ -50,15 +51,17 @@ const ROLE_LEVEL: Record<AdminRole, number> = {
   super_admin: 4,
 };
 
+const EMPTY_AUTH_STATE: AdminAuthData = {
+  user: null,
+  role: 'associate',
+  storeId: null,
+  loading: true,
+  isAdmin: false,
+  isManager: false,
+};
+
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AdminAuthData>({
-    user: null,
-    role: 'admin',
-    storeId: null,
-    loading: true,
-    isAdmin: true,
-    isManager: false,
-  });
+  const [state, setState] = useState<AdminAuthData>(EMPTY_AUTH_STATE);
 
   useEffect(() => {
     const supabase = getSupabase();
@@ -66,91 +69,43 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     async function loadUser() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
 
-        if (!session?.user) {
-          setState(prev => ({ ...prev, loading: false }));
+        if (!session?.user || !accessToken) {
+          clearAdminAuthTokenCookie();
+          setState({ ...EMPTY_AUTH_STATE, loading: false });
           return;
         }
 
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+        const response = await fetch('/api/admin/session', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
 
-        if (profile) {
-          let storeName: string | null = null;
-          let storeNumber: string | null = null;
-          if (profile.store_id) {
-            const { data: store } = await supabase
-              .from('stores')
-              .select('store_name, store_number')
-              .eq('id', profile.store_id)
-              .single();
-            storeName = store?.store_name ?? null;
-            storeNumber = store?.store_number ?? null;
-          }
-
-          const role = profile.role as AdminRole;
-          const roleLevel = ROLE_LEVEL[role] ?? 0;
-          setState({
-            user: {
-              id: profile.id,
-              email: profile.email,
-              first_name: profile.first_name,
-              last_name: profile.last_name,
-              display_name: profile.display_name,
-              role,
-              status: profile.status,
-              store_id: profile.store_id,
-              store_name: storeName,
-              store_number: storeNumber,
-              avatar_url: profile.avatar_url,
-            },
-            role,
-            storeId: profile.store_id,
-            loading: false,
-            isAdmin: roleLevel >= ROLE_LEVEL.admin,
-            isManager: roleLevel >= ROLE_LEVEL.store_manager,
-          });
-        } else {
-          // Fallback: no profile yet — check old app_users table for backwards compat
-          const { data: appUser } = await supabase
-            .from('app_users')
-            .select('id, email, name, role, store_id, store, store_number')
-            .eq('email', session.user.email)
-            .single();
-
-          if (appUser) {
-            const legacyRole = appUser.role as string;
-            const mappedRole: AdminRole = legacyRole === 'admin' ? 'admin' : legacyRole === 'manager' ? 'store_manager' : 'associate';
-            const mappedLevel = ROLE_LEVEL[mappedRole] ?? 0;
-            setState({
-              user: {
-                id: appUser.id,
-                email: appUser.email,
-                first_name: appUser.name?.split(' ')[0] ?? '',
-                last_name: appUser.name?.split(' ').slice(1).join(' ') ?? '',
-                display_name: appUser.name ?? appUser.email,
-                role: mappedRole,
-                status: 'active',
-                store_id: appUser.store_id,
-                store_name: appUser.store,
-                store_number: appUser.store_number,
-                avatar_url: null,
-              },
-              role: mappedRole,
-              storeId: appUser.store_id,
-              loading: false,
-              isAdmin: mappedLevel >= ROLE_LEVEL.admin,
-              isManager: mappedLevel >= ROLE_LEVEL.store_manager,
-            });
-          } else {
-            setState(prev => ({ ...prev, loading: false }));
-          }
+        if (!response.ok) {
+          clearAdminAuthTokenCookie();
+          await supabase.auth.signOut();
+          setState({ ...EMPTY_AUTH_STATE, loading: false });
+          return;
         }
+
+        const data = await response.json();
+        const role = data.role as AdminRole;
+        const roleLevel = ROLE_LEVEL[role] ?? 0;
+
+        setAdminAuthTokenCookie(accessToken);
+        setState({
+          user: data.user,
+          role,
+          storeId: data.storeId ?? null,
+          loading: false,
+          isAdmin: roleLevel >= ROLE_LEVEL.admin,
+          isManager: roleLevel >= ROLE_LEVEL.store_manager,
+        });
       } catch {
-        setState(prev => ({ ...prev, loading: false }));
+        clearAdminAuthTokenCookie();
+        setState({ ...EMPTY_AUTH_STATE, loading: false });
       }
     }
 
@@ -166,14 +121,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     const supabase = getSupabase();
     await supabase.auth.signOut();
-    setState(prev => ({
-      ...prev,
-      user: null,
-      role: 'associate' as AdminRole,
-      storeId: null,
-      isAdmin: false,
-      isManager: false,
-    }));
+    clearAdminAuthTokenCookie();
+    setState({ ...EMPTY_AUTH_STATE, loading: false });
   };
 
   const value = { ...state, signOut };

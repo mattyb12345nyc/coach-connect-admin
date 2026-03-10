@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { 
   getAllBlockedIPs,
   setIPBlock,
@@ -7,6 +8,9 @@ import {
 } from '@/lib/agent-rate-limiter';
 
 export async function GET(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const blockedIPs = await getAllBlockedIPs();
     
@@ -31,6 +35,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const body = await request.json();
     
@@ -85,6 +92,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const url = new URL(request.url);
     const ip = url.searchParams.get('ip');

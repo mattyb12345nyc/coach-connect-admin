@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { getAdminClient } from '@/lib/supabase';
 import { generateCandidateImagesDetailed } from '@/lib/trend-engine';
 
@@ -12,6 +13,9 @@ function getBaseUrl(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const secret = request.headers.get('x-process-secret');
   const expected = process.env.IMAGE_PROCESS_SECRET;
   if (!expected) {
@@ -82,9 +86,18 @@ export async function POST(request: NextRequest) {
 
     if (remainingCount && remainingCount > 0) {
       const baseUrl = getBaseUrl(request);
+      const cookie = request.headers.get('cookie');
+      const authorization = request.headers.get('authorization');
+      const processHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-process-secret': expected,
+      };
+      if (cookie) processHeaders.cookie = cookie;
+      if (authorization) processHeaders.authorization = authorization;
+
       fetch(`${baseUrl}/api/admin/culture/trends/images/process`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-process-secret': expected },
+        headers: processHeaders,
         body: JSON.stringify({ imageOptions }),
       }).catch(() => {});
     }

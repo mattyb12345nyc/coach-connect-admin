@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,9 @@ Return ONLY a JSON object with these exact fields:
 No preamble, no markdown, no explanation — JSON only.`;
 
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {

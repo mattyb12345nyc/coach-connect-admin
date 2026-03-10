@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,7 +118,10 @@ function topQuestions(queries: string[]): { query: string; count: number }[] {
     .map(({ original, count }) => ({ query: original, count }));
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   if (!API_KEY) {
     return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
   }

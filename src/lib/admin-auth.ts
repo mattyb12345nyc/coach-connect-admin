@@ -1,7 +1,14 @@
-import { NextRequest } from 'next/server';
 import { getAdminClient } from '@/lib/supabase';
+import {
+  type AdminAuthResult,
+  type AdminRole,
+  type AdminSupabaseLike,
+  type RequestLike,
+  type ValidatedAdminUser,
+  getValidatedAdminUserWithClient,
+} from '@/lib/admin-auth-core';
 
-export type AdminRole = 'associate' | 'store_manager' | 'regional_manager' | 'admin' | 'super_admin';
+export * from '@/lib/admin-auth-core';
 
 const ROLE_LEVEL: Record<AdminRole, number> = {
   associate: 0,
@@ -11,55 +18,28 @@ const ROLE_LEVEL: Record<AdminRole, number> = {
   super_admin: 4,
 };
 
-interface AdminAuthResult {
-  role: AdminRole;
-  storeId: string | null;
-  userId: string | null;
+export async function getValidatedAdminUser(
+  request: RequestLike,
+  supabase?: AdminSupabaseLike
+): Promise<ValidatedAdminUser | null> {
+  return getValidatedAdminUserWithClient(
+    request,
+    supabase ?? (getAdminClient() as unknown as AdminSupabaseLike)
+  );
 }
 
-export async function getAdminRole(request: NextRequest): Promise<AdminAuthResult | null> {
-  try {
-    const supabase = getAdminClient();
-    const email = request.headers.get('x-admin-email');
+export async function getAdminRole(
+  request: RequestLike,
+  supabase?: AdminSupabaseLike
+): Promise<AdminAuthResult | null> {
+  const validated = await getValidatedAdminUser(request, supabase);
+  if (!validated) return null;
 
-    if (email) {
-      // Try profiles table first
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, role, store_id')
-        .eq('email', email)
-        .single();
-
-      if (profile) {
-        return {
-          role: profile.role as AdminRole,
-          storeId: profile.store_id,
-          userId: profile.id,
-        };
-      }
-
-      // Fallback to app_users for backwards compatibility
-      const { data: appUser } = await supabase
-        .from('app_users')
-        .select('id, role, store_id')
-        .eq('email', email)
-        .single();
-
-      if (appUser) {
-        const legacyRole = appUser.role as string;
-        const mappedRole: AdminRole = legacyRole === 'admin' ? 'admin' : legacyRole === 'manager' ? 'store_manager' : 'associate';
-        return {
-          role: mappedRole,
-          storeId: appUser.store_id,
-          userId: appUser.id,
-        };
-      }
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
+  return {
+    role: validated.profile.role,
+    storeId: validated.profile.store_id,
+    userId: validated.profile.id,
+  };
 }
 
 export function hasMinRole(userRole: AdminRole, minRole: AdminRole): boolean {

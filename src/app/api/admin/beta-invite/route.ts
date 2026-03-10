@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { getAdminClient } from '@/lib/supabase';
 import crypto from 'crypto';
 
@@ -7,6 +8,9 @@ export const dynamic = 'force-dynamic';
 const SEND_INVITE_URL = 'https://coach.futureproof.work/.netlify/functions/send-invite';
 
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const { email, name, storeId } = await request.json();
     const trimmedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { Redis } from '@upstash/redis';
 
 // Basic schema guard; keep permissive and validate shapes in UI
@@ -17,7 +18,10 @@ function getRedis() {
 
 const CONFIG_KEY = 'admin:rate-limit-config';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const redis = getRedis();
     const override = await redis.get(CONFIG_KEY);
@@ -39,6 +43,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const body = await request.json();
     if (!isObject(body)) {

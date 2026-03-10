@@ -9,6 +9,7 @@ const PUBLISH_PULSE_URL = 'https://coach-connect-demo.netlify.app/.netlify/funct
 export async function POST(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const authorization = request.headers.get('authorization');
     const { cardId } = await request.json();
 

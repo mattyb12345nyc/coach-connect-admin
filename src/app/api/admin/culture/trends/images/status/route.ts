@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { getAdminClient } from '@/lib/supabase';
 import { generateCandidateImagesDetailed } from '@/lib/trend-engine';
 
@@ -7,6 +8,9 @@ export const dynamic = 'force-dynamic';
 const STUCK_THRESHOLD_MS = 30_000;
 
 export async function GET(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const idsParam = request.nextUrl.searchParams.get('ids');
     if (!idsParam) {
@@ -42,6 +46,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const _t0 = Date.now();
   // #region agent log
   const _dl = (loc: string, msg: string, data: Record<string, unknown>) => { try { const fs = require('fs'); fs.appendFileSync('/tmp/debug-99cc76.log', JSON.stringify({sessionId:'99cc76',location:loc,message:msg,data,timestamp:Date.now()})+'\n'); } catch {} };

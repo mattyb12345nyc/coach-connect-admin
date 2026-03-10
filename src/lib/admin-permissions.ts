@@ -1,4 +1,3 @@
-import { type NextRequest } from 'next/server';
 import { getAdminRole, type AdminRole } from '@/lib/admin-auth';
 
 export type ScopeType = 'global' | 'region' | 'store';
@@ -9,12 +8,8 @@ export interface RequestAdminContext {
   userId: string | null;
 }
 
-export async function getRequestAdminContext(request: NextRequest): Promise<RequestAdminContext> {
-  const resolved = await getAdminRole(request);
-  if (!resolved) {
-    return { role: 'admin', storeId: null, userId: null };
-  }
-  return resolved;
+export async function getRequestAdminContext(request: Request): Promise<RequestAdminContext | null> {
+  return getAdminRole(request);
 }
 
 export function canManageScope(

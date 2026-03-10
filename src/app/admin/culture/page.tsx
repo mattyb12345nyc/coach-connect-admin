@@ -1478,8 +1478,8 @@ export default function CultureFeedPage() {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const adminHeaders = useMemo<Record<string, string>>(
-    () => (user?.email ? { 'x-admin-email': user.email } : ({} as Record<string, string>)),
-    [user?.email]
+    () => ({} as Record<string, string>),
+    []
   );
 
   const fetchItems = useCallback(async () => {

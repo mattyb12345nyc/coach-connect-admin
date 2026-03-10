@@ -36,6 +36,10 @@ function decodeDataUriImage(dataUri: string): { blob: Blob; contentType: string 
 
 async function getImageUrlForEntity(id: string, entity: ImageEntity, request: NextRequest): Promise<string | null> {
   const context = await getRequestAdminContext(request);
+  if (!context) {
+    throw new Error('Unauthorized');
+  }
+
   const supabase = getAdminClient();
 
   if (entity === 'candidate') {
@@ -142,7 +146,8 @@ export async function GET(
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to load image';
-    const status = message.toLowerCase().includes('forbidden') ? 403 : 500;
+    const lowered = message.toLowerCase();
+    const status = lowered.includes('unauthorized') ? 401 : lowered.includes('forbidden') ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

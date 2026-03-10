@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { 
   getAgentRateLimit,
   deleteAgentRateLimit,
@@ -12,6 +13,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { agentId: string } }
 ) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const agentId = params.agentId;
     const url = new URL(request.url);
@@ -40,6 +44,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { agentId: string } }
 ) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const agentId = params.agentId;
     await deleteAgentRateLimit(agentId);
@@ -61,6 +68,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { agentId: string } }
 ) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const agentId = params.agentId;
     const body = await request.json();

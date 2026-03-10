@@ -121,7 +121,7 @@ function InviteRegistrationContent() {
 
   const fetchStores = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/stores?status=OPEN');
+      const res = await fetch('/api/stores?status=OPEN');
       if (res.ok) {
         const data = await res.json();
         setStores(Array.isArray(data) ? data : data.stores ?? []);

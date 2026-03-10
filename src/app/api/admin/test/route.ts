@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { applyRateLimit } from '@/lib/rate-limiter';
 import { getIdentityKey } from '@/lib/identity';
 
@@ -7,6 +8,9 @@ import { getIdentityKey } from '@/lib/identity';
  * This endpoint applies rate limiting and returns detailed information
  */
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const startTime = Date.now();
     
@@ -90,6 +94,9 @@ export async function POST(request: NextRequest) {
  * Get current rate limit status without consuming a request
  */
 export async function GET(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const identityKey = await getIdentityKey(request);
     

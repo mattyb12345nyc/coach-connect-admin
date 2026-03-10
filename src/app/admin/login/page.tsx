@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
+import { clearAdminAuthTokenCookie, setAdminAuthTokenCookie } from '@/lib/admin-auth-client';
 import { Loader2, Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export default function AdminLoginPage() {
@@ -17,7 +18,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     const supabase = getSupabase();
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -32,6 +33,29 @@ export default function AdminLoginPage() {
       return;
     }
 
+    const accessToken = data.session?.access_token;
+    if (!accessToken) {
+      clearAdminAuthTokenCookie();
+      setError('Sign-in succeeded, but no session token was returned.');
+      setLoading(false);
+      return;
+    }
+
+    const adminSessionRes = await fetch('/api/admin/session', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!adminSessionRes.ok) {
+      clearAdminAuthTokenCookie();
+      await supabase.auth.signOut();
+      setError('You do not have admin access.');
+      setLoading(false);
+      return;
+    }
+
+    setAdminAuthTokenCookie(accessToken);
     window.location.href = '/admin/today';
   };
 

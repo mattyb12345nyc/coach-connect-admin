@@ -44,6 +44,7 @@ async function attachSubmittedByNames(
 export async function GET(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const audience = request.nextUrl.searchParams.get('audience');
     let query = supabase
@@ -112,6 +113,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const body = await request.json();
     const scopeType = context.role === 'store_manager' ? 'store' : body.scope_type || 'global';
@@ -149,6 +151,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const { id, ...updates } = await request.json();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
@@ -195,6 +198,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });

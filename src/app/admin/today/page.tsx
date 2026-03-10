@@ -688,8 +688,8 @@ export default function TodayDashboardPage() {
   } | null>(null);
 
   const adminHeaders = useMemo<Record<string, string>>(
-    () => (user?.email ? { 'x-admin-email': user.email } : ({} as Record<string, string>)),
-    [user?.email]
+    () => ({} as Record<string, string>),
+    []
   );
 
   const fetchAll = useCallback(async () => {

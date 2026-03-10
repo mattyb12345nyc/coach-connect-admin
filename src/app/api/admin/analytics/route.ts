@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { getAnalytics } from '@/lib/admin/analytics';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const analytics = await getAnalytics();
     

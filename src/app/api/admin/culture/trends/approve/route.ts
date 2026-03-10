@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const { candidateId } = await request.json();
 

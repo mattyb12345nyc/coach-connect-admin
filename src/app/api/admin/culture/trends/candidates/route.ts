@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const status = request.nextUrl.searchParams.get('status');
 
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const body = await request.json();
     const { id, title, description, engagement_text } = body as {

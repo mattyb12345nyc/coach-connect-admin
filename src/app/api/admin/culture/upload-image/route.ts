@@ -10,7 +10,8 @@ const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export async function POST(request: NextRequest) {
   try {
-    await getRequestAdminContext(request);
+    const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { getAdminClient } from '@/lib/supabase';
 import { generateTrendCandidates } from '@/lib/trend-engine';
 
@@ -9,6 +10,9 @@ function getScheduleSecret() {
 }
 
 export async function POST(request: NextRequest) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const secret = request.headers.get('x-trend-schedule-secret');
     if (getScheduleSecret() && secret !== getScheduleSecret()) {

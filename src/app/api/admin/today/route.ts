@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const table = request.nextUrl.searchParams.get('table');
     const audience = request.nextUrl.searchParams.get('audience');
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const body = await request.json();
     const { table, ...record } = body;
@@ -124,6 +126,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const body = await request.json();
     const { table, id, ...updates } = body;
@@ -173,6 +176,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const { table, id } = await request.json();
 

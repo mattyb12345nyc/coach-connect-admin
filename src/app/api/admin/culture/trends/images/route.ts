@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
   // #endregion
   try {
     const context = await getRequestAdminContext(request);
+    if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const {
       candidateIds,
@@ -96,9 +97,18 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+    const cookie = request.headers.get('cookie');
+    const authorization = request.headers.get('authorization');
+    const processHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-process-secret': processSecret,
+    };
+    if (cookie) processHeaders.cookie = cookie;
+    if (authorization) processHeaders.authorization = authorization;
+
     fetch(`${baseUrl}/api/admin/culture/trends/images/process`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-process-secret': processSecret },
+      headers: processHeaders,
       body: JSON.stringify({ imageOptions }),
     }).catch(() => {});
 
