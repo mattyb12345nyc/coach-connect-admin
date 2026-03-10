@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { PracticeSessionsPanel } from '@/components/admin/PracticeSessionsPanel';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,21 +12,67 @@ import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { ScenarioGeneratorSection } from '@/components/admin/ScenarioGeneratorSection';
-import { VOICE_AGENTS, type VoiceAgentDifficulty, type VoiceAgentConfig } from '@/types/elevenlabs';
+import { type VoiceAgentDifficulty, type VoiceAgentConfig } from '@/types/elevenlabs';
+
+interface PracticePersonaRecord {
+  id: string;
+  name: string;
+  age: number | null;
+  type: string | null;
+  scenario: string;
+  difficulty: VoiceAgentDifficulty;
+  image_url: string | null;
+  agent_id: string | null;
+  tip: string | null;
+  is_active: boolean;
+}
 
 export default function PracticeFloorPage() {
   const { isAdmin } = useAdminAuth();
 
   // Voice agents state
+  const [voiceAgents, setVoiceAgents] = useState<VoiceAgentConfig[]>([]);
   const [voiceLiveData, setVoiceLiveData] = useState<Record<string, { status: 'active' | 'inactive' | 'unknown' }>>({});
+  const [voiceAgentsLoading, setVoiceAgentsLoading] = useState(false);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [voiceFetched, setVoiceFetched] = useState(false);
 
+  const fetchVoiceAgents = useCallback(async () => {
+    setVoiceAgentsLoading(true);
+    try {
+      const res = await fetch('/api/admin/personas');
+      if (!res.ok) throw new Error('Failed to load practice personas');
+      const data = await res.json();
+      const mappedAgents = (Array.isArray(data) ? data : [])
+        .filter((persona: PracticePersonaRecord) => persona.is_active && persona.agent_id)
+        .map((persona: PracticePersonaRecord) => ({
+          agentId: persona.agent_id as string,
+          name: persona.name,
+          scenario: persona.scenario,
+          description: persona.tip || persona.type || 'Practice persona',
+          difficulty: persona.difficulty,
+          imageUrl: persona.image_url || undefined,
+        } satisfies VoiceAgentConfig));
+      setVoiceAgents(mappedAgents);
+    } catch (error) {
+      setVoiceAgents([]);
+      toast.error(error instanceof Error ? error.message : 'Failed to load practice personas');
+    } finally {
+      setVoiceAgentsLoading(false);
+    }
+  }, []);
+
   const fetchVoiceAgentStatus = useCallback(async () => {
+    if (voiceAgents.length === 0) {
+      setVoiceLiveData({});
+      setVoiceFetched(true);
+      return;
+    }
+
     setVoiceLoading(true);
     const results: Record<string, { status: 'active' | 'inactive' | 'unknown' }> = {};
     await Promise.allSettled(
-      VOICE_AGENTS.map(async (agent) => {
+      voiceAgents.map(async (agent) => {
         try {
           const res = await fetch(`/api/proxy/elevenlabs/agents/${agent.agentId}`);
           results[agent.agentId] = { status: res.ok ? 'active' : 'inactive' };
@@ -37,7 +84,7 @@ export default function PracticeFloorPage() {
     setVoiceLiveData(results);
     setVoiceLoading(false);
     setVoiceFetched(true);
-  }, []);
+  }, [voiceAgents]);
 
   // Analysis config state
   const [analysisOpen, setAnalysisOpen] = useState(false);
@@ -80,8 +127,13 @@ export default function PracticeFloorPage() {
 
   useEffect(() => {
     fetchAnalysisConfig();
+    fetchVoiceAgents();
+  }, [fetchAnalysisConfig, fetchVoiceAgents]);
+
+  useEffect(() => {
+    if (voiceAgentsLoading) return;
     fetchVoiceAgentStatus();
-  }, [fetchAnalysisConfig, fetchVoiceAgentStatus]);
+  }, [fetchVoiceAgentStatus, voiceAgentsLoading]);
 
   return (
     <RoleGate minRole="store_manager" readOnlyFor={['store_manager']}>
@@ -99,6 +151,8 @@ export default function PracticeFloorPage() {
               </p>
             </div>
           </div>
+
+          <PracticeSessionsPanel />
 
           {/* Post-Call Analysis Config */}
           <Card className="mb-8 overflow-hidden">
@@ -261,35 +315,61 @@ export default function PracticeFloorPage() {
                 </h2>
                 <p className="text-sm text-gray-500 mt-0.5">All active Coach Voice Agent personas</p>
               </div>
-              <Button variant="outline" size="sm" onClick={fetchVoiceAgentStatus} disabled={voiceLoading}>
-                {voiceLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+              <Button variant="outline" size="sm" onClick={fetchVoiceAgents} disabled={voiceLoading || voiceAgentsLoading}>
+                {voiceLoading || voiceAgentsLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
                 Refresh
               </Button>
             </div>
 
-            {(['Beginner', 'Intermediate', 'Advanced'] as VoiceAgentDifficulty[]).map((level) => {
-              const agents = VOICE_AGENTS.filter(a => a.difficulty === level);
-              const dotColor = level === 'Beginner' ? 'bg-green-400' : level === 'Intermediate' ? 'bg-amber-400' : 'bg-rose-400';
-              return (
-                <div key={level} className="mb-7">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className={cn('w-2 h-2 rounded-full flex-shrink-0', dotColor)} />
-                    <span className="text-sm font-semibold text-gray-700">{level}</span>
-                    <span className="text-xs text-gray-400">{agents.length} agents</span>
+            {voiceAgentsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Card key={index} className="p-5">
+                    <div className="animate-pulse space-y-4">
+                      <div className="flex items-start gap-3.5">
+                        <div className="h-14 w-14 rounded-full bg-gray-100" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-24 bg-gray-100 rounded" />
+                          <div className="h-3 w-32 bg-gray-100 rounded" />
+                        </div>
+                      </div>
+                      <div className="h-12 w-full bg-gray-100 rounded" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : voiceAgents.length === 0 ? (
+              <Card className="py-12 flex flex-col items-center justify-center text-center">
+                <AudioLines className="h-10 w-10 text-gray-300 mb-3" />
+                <p className="text-sm font-medium text-gray-500">No agents configured</p>
+                <p className="text-xs text-gray-400 mt-1">Deploy a scenario to create a live Practice persona.</p>
+              </Card>
+            ) : (
+              (['Beginner', 'Intermediate', 'Advanced'] as VoiceAgentDifficulty[]).map((level) => {
+                const agents = voiceAgents.filter(a => a.difficulty === level);
+                if (agents.length === 0) return null;
+                const dotColor = level === 'Beginner' ? 'bg-green-400' : level === 'Intermediate' ? 'bg-amber-400' : 'bg-rose-400';
+                return (
+                  <div key={level} className="mb-7">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={cn('w-2 h-2 rounded-full flex-shrink-0', dotColor)} />
+                      <span className="text-sm font-semibold text-gray-700">{level}</span>
+                      <span className="text-xs text-gray-400">{agents.length} agents</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {agents.map((agent) => (
+                        <VoiceAgentCard
+                          key={agent.agentId}
+                          agent={agent}
+                          status={voiceLiveData[agent.agentId]?.status}
+                          loading={voiceLoading && !voiceFetched}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {agents.map((agent) => (
-                      <VoiceAgentCard
-                        key={agent.agentId}
-                        agent={agent}
-                        status={voiceLiveData[agent.agentId]?.status}
-                        loading={voiceLoading && !voiceFetched}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           {isAdmin && <ScenarioGeneratorSection />}
