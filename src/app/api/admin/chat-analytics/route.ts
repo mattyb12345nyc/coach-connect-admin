@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const BASE_URL = process.env.CUSTOMGPT_API_BASE_URL ?? 'https://app.customgpt.ai/api/v1';
 const API_KEY = process.env.CUSTOMGPT_API_KEY ?? '';
-const PROJECT_ID = process.env.NEXT_PUBLIC_COACH_PROJECT_ID ?? '90868';
+const PROJECT_ID = process.env.CUSTOMGPT_PROJECT_ID ?? '';
 
 const STOP_WORDS = new Set([
   'i', 'me', 'my', 'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to',
@@ -126,6 +126,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
   }
 
+  if (!PROJECT_ID) {
+    return NextResponse.json({ error: 'CUSTOMGPT_PROJECT_ID not configured' }, { status: 500 });
+  }
+
   try {
     // Fetch settings for no_answer_message
     let noAnswerMessage = '';
@@ -133,11 +137,6 @@ export async function GET(request: NextRequest) {
       const settingsRes = await cgFetch(`/projects/${PROJECT_ID}/settings`);
       noAnswerMessage = (settingsRes?.data?.no_answer_message ?? settingsRes?.no_answer_message ?? '').toLowerCase();
     } catch { /* non-blocking */ }
-
-    // #region agent log
-    const { appendFileSync } = await import('fs');
-    try { appendFileSync('/Users/mattbritton/Desktop/coach-connect-admin/.cursor/debug-f1ddd0.log', JSON.stringify({sessionId:'f1ddd0',location:'chat-analytics/route.ts',message:'analytics route called',data:{hasApiKey:!!API_KEY,projectId:PROJECT_ID},timestamp:Date.now(),hypothesisId:'D'})+'\n'); } catch {}
-    // #endregion
 
     // Fetch conversations (up to 2 pages = ~100 conversations)
     const [page1Res, page2Res] = await Promise.allSettled([
@@ -152,10 +151,6 @@ export async function GET(request: NextRequest) {
     if (page2Res.status === 'fulfilled') {
       conversations.push(...(page2Res.value?.data?.data ?? []));
     }
-
-    // #region agent log
-    try { appendFileSync('/Users/mattbritton/Desktop/coach-connect-admin/.cursor/debug-f1ddd0.log', JSON.stringify({sessionId:'f1ddd0',location:'chat-analytics/route.ts',message:'conversations fetched',data:{page1Status:page1Res.status,page2Status:page2Res.status,totalConversations:conversations.length,page1Shape:page1Res.status==='fulfilled'?Object.keys(page1Res.value||{}).join(','):'rejected',page1Error:page1Res.status==='rejected'?String(page1Res.reason):'ok'},timestamp:Date.now(),hypothesisId:'D'})+'\n'); } catch {}
-    // #endregion
 
     if (conversations.length === 0) {
       return NextResponse.json({

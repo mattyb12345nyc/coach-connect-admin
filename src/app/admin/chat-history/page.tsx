@@ -5,7 +5,6 @@ import {
   MessageSquare, TrendingUp, TrendingDown, Minus,
   AlertTriangle, BarChart2, Clock, Star, Hash,
   Loader2, RefreshCw, MessageCircle, Calendar,
-  ChevronRight,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -146,9 +145,9 @@ export default function ChatAnalyticsPage() {
                 <MessageSquare className="w-5 h-5 text-coach-gold" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Chat History & Analytics</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Coach Chat Analytics</h1>
                 <p className="text-sm text-gray-500">
-                  Insights from the last 100 conversations
+                  Data sourced from CustomGPT.ai analytics
                 </p>
               </div>
             </div>
@@ -356,7 +355,7 @@ export default function ChatAnalyticsPage() {
                     {analytics.recentConversations.map(conv => (
                       <div
                         key={conv.id}
-                        className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 transition-colors"
+                        className="flex items-center gap-4 px-5 py-3.5"
                       >
                         <div className="w-8 h-8 rounded-full bg-coach-gold/10 flex items-center justify-center flex-shrink-0">
                           <MessageSquare className="w-3.5 h-3.5 text-coach-gold" />
@@ -372,7 +371,7 @@ export default function ChatAnalyticsPage() {
                             )}
                           </p>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                        <span className="text-xs text-gray-300 flex-shrink-0">via CustomGPT</span>
                       </div>
                     ))}
                   </Card>
