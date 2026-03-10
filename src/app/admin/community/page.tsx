@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 
 interface CommunityPost {
   id: string;
@@ -105,6 +106,7 @@ export default function CommunityPage() {
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [updatingPosts, setUpdatingPosts] = useState<Set<string>>(new Set());
+  const [confirmAction, setConfirmAction] = useState<{ type: 'hide' | 'remove'; id: string; name: string } | null>(null);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -408,9 +410,9 @@ export default function CommunityPage() {
                               variant="ghost"
                               size="icon-sm"
                               onClick={() =>
-                                updatePost(post.id, {
-                                  status: post.status === 'hidden' ? 'active' : 'hidden',
-                                })
+                                post.status === 'hidden'
+                                  ? updatePost(post.id, { status: 'active' })
+                                  : setConfirmAction({ type: 'hide', id: post.id, name: post.author_name })
                               }
                               title={post.status === 'hidden' ? 'Show' : 'Hide'}
                             >
@@ -432,7 +434,7 @@ export default function CommunityPage() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              onClick={() => removePost(post.id)}
+                              onClick={() => setConfirmAction({ type: 'remove', id: post.id, name: post.author_name })}
                               title="Remove"
                               className="hover:text-red-600"
                             >
@@ -449,6 +451,24 @@ export default function CommunityPage() {
           )}
         </div>
     </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmAction}
+        title={confirmAction?.type === 'remove' ? 'Remove this post?' : 'Hide this post?'}
+        description={
+          confirmAction?.type === 'remove'
+            ? `This will permanently remove the post by ${confirmAction.name}. This action cannot be undone.`
+            : `This will hide the post by ${confirmAction?.name} from all associates.`
+        }
+        confirmLabel={confirmAction?.type === 'remove' ? 'Remove' : 'Hide'}
+        onConfirm={() => {
+          if (!confirmAction) return;
+          if (confirmAction.type === 'remove') removePost(confirmAction.id);
+          else updatePost(confirmAction.id, { status: 'hidden' });
+          setConfirmAction(null);
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </RoleGate>
   );
 }

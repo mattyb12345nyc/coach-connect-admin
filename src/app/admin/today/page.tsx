@@ -8,7 +8,6 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  GripVertical,
   Sparkles,
   Calendar,
   Star,
@@ -23,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { useAdminAuth, type AdminRole } from '@/contexts/AdminAuthContext';
 
 type TableName = 'focus_cards' | 'cultural_moments' | 'whats_new';
@@ -611,9 +611,6 @@ function ItemRow({
       'flex items-center gap-4 px-4 py-3 bg-white rounded-lg border transition-colors group',
       warning ? 'border-amber-300 bg-amber-50/60 hover:border-amber-400' : 'border-gray-100 hover:border-gray-200'
     )}>
-      {/* Drag handle */}
-      <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
-
       {/* Toggle — left side */}
       <div className="shrink-0">
         {toggling ? (
@@ -675,6 +672,7 @@ export default function TodayDashboardPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ table: TableName; id: string; label: string } | null>(null);
 
   const [expanded, setExpanded] = useState<Record<TableName, boolean>>({
     focus_cards: true,
@@ -874,7 +872,7 @@ export default function TodayDashboardPage() {
                         active={card.is_active}
                         onToggleActive={() => handleToggleActive('focus_cards', card.id, card.is_active)}
                         onEdit={() => openEditForm('focus_cards', card)}
-                        onDelete={() => handleDelete('focus_cards', card.id)}
+                        onDelete={() => setConfirmDelete({ table: 'focus_cards', id: card.id, label: card.title })}
                         deleting={deletingId === card.id}
                         toggling={togglingId === card.id}
                       />
@@ -932,7 +930,7 @@ export default function TodayDashboardPage() {
                         active={moment.is_active}
                         onToggleActive={() => handleToggleActive('cultural_moments', moment.id, moment.is_active)}
                         onEdit={() => openEditForm('cultural_moments', moment)}
-                        onDelete={() => handleDelete('cultural_moments', moment.id)}
+                        onDelete={() => setConfirmDelete({ table: 'cultural_moments', id: moment.id, label: moment.name })}
                         deleting={deletingId === moment.id}
                         toggling={togglingId === moment.id}
                         warning={
@@ -995,7 +993,7 @@ export default function TodayDashboardPage() {
                         active={item.is_active}
                         onToggleActive={() => handleToggleActive('whats_new', item.id, item.is_active)}
                         onEdit={() => openEditForm('whats_new', item)}
-                        onDelete={() => handleDelete('whats_new', item.id)}
+                        onDelete={() => setConfirmDelete({ table: 'whats_new', id: item.id, label: item.title })}
                         deleting={deletingId === item.id}
                         toggling={togglingId === item.id}
                       />
@@ -1007,6 +1005,18 @@ export default function TodayDashboardPage() {
           </div>
         </div>
     </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Delete this item?"
+        description={`"${confirmDelete?.label}" will be permanently removed. This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (confirmDelete) handleDelete(confirmDelete.table, confirmDelete.id);
+          setConfirmDelete(null);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </RoleGate>
   );
 }

@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 
 interface ProfileUser {
   id: string;
@@ -85,6 +86,7 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ProfileUser>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [confirmStatus, setConfirmStatus] = useState<{ userId: string; newStatus: string; userName: string } | null>(null);
   const [storesList, setStoresList] = useState<{ id: string; store_number: string; store_name: string; city: string; state: string }[]>([]);
   const [realAvgScore, setRealAvgScore] = useState<number | null | 'loading'>('loading');
   const [removingTestAccounts, setRemovingTestAccounts] = useState(false);
@@ -496,7 +498,7 @@ export default function UsersPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleStatusChange(user.id, 'suspended')}
+                              onClick={() => setConfirmStatus({ userId: user.id, newStatus: 'suspended', userName: user.display_name || user.email || 'this user' })}
                               disabled={isSaving}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200 text-xs"
                             >
@@ -628,6 +630,22 @@ export default function UsersPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmStatus}
+        title={confirmStatus?.newStatus === 'suspended' ? 'Suspend this user?' : 'Deactivate this user?'}
+        description={
+          confirmStatus?.newStatus === 'suspended'
+            ? `${confirmStatus.userName} will be suspended and lose access to Coach Pulse immediately.`
+            : `${confirmStatus?.userName} will be deactivated and can no longer sign in.`
+        }
+        confirmLabel={confirmStatus?.newStatus === 'suspended' ? 'Suspend' : 'Deactivate'}
+        onConfirm={() => {
+          if (confirmStatus) handleStatusChange(confirmStatus.userId, confirmStatus.newStatus);
+          setConfirmStatus(null);
+        }}
+        onCancel={() => setConfirmStatus(null)}
+      />
     </RoleGate>
   );
 }

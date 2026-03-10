@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { getSupabase } from '@/lib/supabase';
 import { RoleGate } from '@/components/admin/RoleGate';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 
 // ─── Types ───
 
@@ -1475,6 +1476,13 @@ export default function CultureFeedPage() {
   const [upscale4k, setUpscale4k] = useState(false);
   const [pollingIds, setPollingIds] = useState<string[]>([]);
   const [pendingReviewErrors, setPendingReviewErrors] = useState<Record<string, string>>({});
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'delete' | 'unpublish' | 'rejectFeed' | 'rejectCandidate' | 'bulkReject';
+    id?: string;
+    item?: CultureItem;
+    ids?: string[];
+    title?: string;
+  } | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const adminHeaders = useMemo<Record<string, string>>(
@@ -1945,7 +1953,7 @@ export default function CultureFeedPage() {
             processingId={reviewingFeedItemId}
             errors={pendingReviewErrors}
             onApprove={handleApprovePendingFeedItem}
-            onReject={handleRejectPendingFeedItem}
+            onReject={async (item) => { setConfirmAction({ type: 'rejectFeed', item, title: item.title }); }}
           />
 
           {/* Pending review banner */}
@@ -2023,7 +2031,7 @@ export default function CultureFeedPage() {
                     <CultureForm data={editingForm} onChange={setEditingForm} onSave={handleSave} onCancel={() => setEditingForm(null)} saving={saving} adminHeaders={adminHeaders} />
                   </div>
                 ) : (
-                  <ContentCard key={item.id} item={item} onEdit={() => setEditingForm({ id: item.id, type: item.type, category: item.category, title: item.title, description: item.description, image_url: item.image_url, engagement_text: item.engagement_text, is_published: item.is_published, publish_date: item.publish_date ?? null, sort_order: item.sort_order })} onDelete={() => handleDelete(item.id)} onTogglePublish={() => handleTogglePublish(item)} deleting={deletingId === item.id} toggling={togglingId === item.id} />
+                  <ContentCard key={item.id} item={item} onEdit={() => setEditingForm({ id: item.id, type: item.type, category: item.category, title: item.title, description: item.description, image_url: item.image_url, engagement_text: item.engagement_text, is_published: item.is_published, publish_date: item.publish_date ?? null, sort_order: item.sort_order })} onDelete={() => setConfirmAction({ type: 'delete', id: item.id, title: item.title })} onTogglePublish={() => item.is_published ? setConfirmAction({ type: 'unpublish', item, title: item.title }) : handleTogglePublish(item)} deleting={deletingId === item.id} toggling={togglingId === item.id} />
                 )
               )}
             </div>
@@ -2045,8 +2053,8 @@ export default function CultureFeedPage() {
           onGenerate={handleGenerateTrends}
           generating={generating}
           onApprove={handleApproveCandidate}
-          onReject={handleRejectCandidate}
-          onBulkReject={handleBulkReject}
+          onReject={(id) => setConfirmAction({ type: 'rejectCandidate', id })}
+          onBulkReject={(ids) => setConfirmAction({ type: 'bulkReject', ids })}
           onUpdateCandidate={handleUpdateCandidate}
           processingCandidateId={processingCandidateId}
           bulkRejecting={bulkRejecting}
@@ -2058,6 +2066,49 @@ export default function CultureFeedPage() {
           onRealWorldAccuracyChange={setRealWorldAccuracy}
           upscale4k={upscale4k}
           onUpscale4kChange={setUpscale4k}
+        />
+
+        <ConfirmDialog
+          isOpen={!!confirmAction}
+          title={
+            confirmAction?.type === 'delete' ? 'Delete this card?'
+            : confirmAction?.type === 'unpublish' ? 'Unpublish this card?'
+            : confirmAction?.type === 'rejectFeed' ? 'Reject this pulse card?'
+            : confirmAction?.type === 'rejectCandidate' ? 'Reject this candidate?'
+            : confirmAction?.type === 'bulkReject' ? `Delete ${confirmAction?.ids?.length ?? 0} candidate(s)?`
+            : 'Confirm'
+          }
+          description={
+            confirmAction?.type === 'delete'
+              ? `"${confirmAction.title}" will be permanently removed.`
+            : confirmAction?.type === 'unpublish'
+              ? `"${confirmAction.title}" will be hidden from associates until republished.`
+            : confirmAction?.type === 'rejectFeed'
+              ? `"${confirmAction.title}" will be rejected and will not appear in the feed.`
+            : confirmAction?.type === 'rejectCandidate'
+              ? 'This candidate will be rejected and removed from the review queue.'
+            : confirmAction?.type === 'bulkReject'
+              ? `${confirmAction.ids?.length ?? 0} selected candidate(s) will be rejected and removed.`
+            : ''
+          }
+          confirmLabel={
+            confirmAction?.type === 'delete' ? 'Delete'
+            : confirmAction?.type === 'unpublish' ? 'Unpublish'
+            : confirmAction?.type === 'bulkReject' ? 'Delete All'
+            : 'Reject'
+          }
+          onConfirm={() => {
+            if (!confirmAction) return;
+            switch (confirmAction.type) {
+              case 'delete': handleDelete(confirmAction.id!); break;
+              case 'unpublish': handleTogglePublish(confirmAction.item!); break;
+              case 'rejectFeed': handleRejectPendingFeedItem(confirmAction.item!); break;
+              case 'rejectCandidate': handleRejectCandidate(confirmAction.id!); break;
+              case 'bulkReject': handleBulkReject(confirmAction.ids!); break;
+            }
+            setConfirmAction(null);
+          }}
+          onCancel={() => setConfirmAction(null)}
         />
       </div>
     </RoleGate>
