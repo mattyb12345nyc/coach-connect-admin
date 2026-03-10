@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         first_name: first_name || null,
         last_name: last_name || null,
+        status: 'pending',
         role: inviteRole,
         store_id: inviteRole === 'admin' || inviteRole === 'regional_manager' ? null : store_id || null,
         region: inviteRole === 'regional_manager' ? normalizedRegion : null,
@@ -170,13 +171,31 @@ export async function DELETE(request: NextRequest) {
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
-    const { error } = await supabase
+    const { data: existingInvite, error: existingInviteError } = await supabase
       .from('invites')
-      .delete()
-      .eq('id', id);
+      .select('id, status')
+      .eq('id', id)
+      .single();
+
+    if (existingInviteError) throw existingInviteError;
+
+    if (!existingInvite) {
+      return NextResponse.json({ error: 'Invite not found' }, { status: 404 });
+    }
+
+    if (existingInvite.status !== 'pending') {
+      return NextResponse.json({ error: 'Only pending invites can be revoked' }, { status: 409 });
+    }
+
+    const { data: updatedInvite, error } = await supabase
+      .from('invites')
+      .update({ status: 'revoked' })
+      .eq('id', id)
+      .select()
+      .single();
 
     if (error) throw error;
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, invitation: updatedInvite });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

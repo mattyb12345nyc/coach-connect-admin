@@ -868,7 +868,7 @@ function InvitationsPageInner() {
     }
   };
 
-  const handleDeleteInvite = async (id: string) => {
+  const handleRevokeInvite = async (id: string) => {
     setDeletingId(id);
     try {
       const res = await fetch('/api/admin/invitations', {
@@ -876,11 +876,18 @@ function InvitationsPageInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      if (!res.ok) throw new Error('Failed to delete invitation');
-      setInvitations(prev => prev.filter(i => i.id !== id));
-      toast.success('Invitation deleted');
-    } catch {
-      toast.error('Failed to delete invitation');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? 'Failed to revoke invitation');
+      }
+      setInvitations(prev => prev.map(invitation => (
+        invitation.id === id
+          ? { ...invitation, status: 'revoked' as const }
+          : invitation
+      )));
+      toast.success('Invitation revoked');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to revoke invitation');
     } finally {
       setDeletingId(null);
     }
@@ -1163,12 +1170,12 @@ function InvitationsPageInner() {
                           </Button>
                           <Button
                             size="sm" variant="outline"
-                            onClick={() => handleDeleteInvite(invitation.id)}
+                            onClick={() => handleRevokeInvite(invitation.id)}
                             disabled={deletingId === invitation.id}
                             className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
                           >
-                            {deletingId === invitation.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
-                            Delete
+                            {deletingId === invitation.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <X className="w-3.5 h-3.5 mr-1" />}
+                            Revoke
                           </Button>
                         </div>
                       )}
