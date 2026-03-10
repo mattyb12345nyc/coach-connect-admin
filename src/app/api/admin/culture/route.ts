@@ -47,10 +47,29 @@ export async function GET(request: NextRequest) {
     if (!context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const supabase = getAdminClient();
     const audience = request.nextUrl.searchParams.get('audience');
-    let query = supabase
-      .from('culture_feed_items')
-      .select('*')
-      .order('sort_order');
+    const statusParam = request.nextUrl.searchParams.get('status');
+
+    let query = supabase.from('culture_feed_items').select('*');
+
+    if (statusParam === 'pending_review') {
+      query = query
+        .eq('status', 'pending_review')
+        .eq('is_published', false)
+        .order('submitted_at', { ascending: true, nullsFirst: false });
+    } else if (statusParam === 'published') {
+      query = query
+        .eq('is_published', true)
+        .or('status.eq.active,status.is.null')
+        .order('sort_order');
+    } else if (statusParam === 'active') {
+      query = query.eq('status', 'active').order('sort_order');
+    } else if (statusParam === 'rejected') {
+      query = query.eq('status', 'rejected').order('sort_order');
+    } else if (statusParam === 'legacy') {
+      query = query.is('status', null).order('sort_order');
+    } else {
+      query = query.order('sort_order');
+    }
 
     const { data, error } = await query;
     if (error) throw error;

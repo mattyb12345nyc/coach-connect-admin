@@ -1482,16 +1482,29 @@ export default function CultureFeedPage() {
     []
   );
 
+  const [pendingReviewItems, setPendingReviewItems] = useState<CultureItem[]>([]);
+
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/culture', { headers: adminHeaders });
+      const statusQuery = feedStatusFilter === 'all' ? 'published' : feedStatusFilter;
+      const res = await fetch(`/api/admin/culture?status=${statusQuery}`, { headers: adminHeaders });
       if (!res.ok) throw new Error('Failed to fetch culture items');
       setItems(await res.json());
     } catch {
       toast.error('Failed to load pulse feed');
     } finally {
       setLoading(false);
+    }
+  }, [adminHeaders, feedStatusFilter]);
+
+  const fetchPendingReviewItems = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/culture?status=pending_review', { headers: adminHeaders });
+      if (!res.ok) throw new Error('Failed to fetch pending items');
+      setPendingReviewItems(await res.json());
+    } catch {
+      toast.error('Failed to load pending review items');
     }
   }, [adminHeaders]);
 
@@ -1519,48 +1532,21 @@ export default function CultureFeedPage() {
   }, [adminHeaders]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+  useEffect(() => { fetchPendingReviewItems(); }, [fetchPendingReviewItems]);
   useEffect(() => { fetchCandidates(); }, [fetchCandidates]);
   useEffect(() => { fetchStores(); }, [fetchStores]);
 
-  const pendingReviewItems = useMemo(
-    () =>
-      items
-        .filter((item) => item.status === 'pending_review' && item.is_published === false)
-        .slice()
-        .sort((a, b) => {
-          const aTime = a.submitted_at ? new Date(a.submitted_at).getTime() : Number.MAX_SAFE_INTEGER;
-          const bTime = b.submitted_at ? new Date(b.submitted_at).getTime() : Number.MAX_SAFE_INTEGER;
-          return aTime - bTime;
-        }),
-    [items]
-  );
-
-  const statusFilteredItems = useMemo(() => {
-    switch (feedStatusFilter) {
-      case 'active':
-        return items.filter((item) => item.status === 'active');
-      case 'pending_review':
-        return items.filter((item) => item.status === 'pending_review');
-      case 'rejected':
-        return items.filter((item) => item.status === 'rejected');
-      case 'legacy':
-        return items.filter((item) => item.status == null);
-      default:
-        return items.filter((item) => item.status === 'active' || item.status == null);
-    }
-  }, [feedStatusFilter, items]);
-
   const filteredItems = useMemo(() => {
-    if (activeTab === 'all') return statusFilteredItems;
-    if (activeTab === 'scheduled') return statusFilteredItems.filter(isScheduled);
-    return statusFilteredItems.filter((i) => i.type === activeTab);
-  }, [statusFilteredItems, activeTab]);
+    if (activeTab === 'all') return items;
+    if (activeTab === 'scheduled') return items.filter(isScheduled);
+    return items.filter((i) => i.type === activeTab);
+  }, [items, activeTab]);
 
   const stats = useMemo(() => ({
     total: items.length,
-    published: items.filter((i) => (i.status === 'active' || i.status == null) && i.is_published && !isScheduled(i)).length,
-    drafts: items.filter((i) => !i.is_published && i.status !== 'pending_review').length,
-    scheduled: items.filter((i) => (i.status === 'active' || i.status == null) && isScheduled(i)).length,
+    published: items.filter((i) => i.is_published && !isScheduled(i)).length,
+    drafts: items.filter((i) => !i.is_published).length,
+    scheduled: items.filter(isScheduled).length,
   }), [items]);
 
   // ─── Handlers ───
@@ -1626,7 +1612,7 @@ export default function CultureFeedPage() {
       }
 
       toast.success('Pulse approved and published');
-      await fetchItems();
+      await Promise.all([fetchItems(), fetchPendingReviewItems()]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Approval failed';
       setPendingReviewErrors((prev) => ({ ...prev, [item.id]: message }));
@@ -1656,7 +1642,7 @@ export default function CultureFeedPage() {
         throw new Error(payload.error || 'Reject failed');
       }
 
-      await fetchItems();
+      await Promise.all([fetchItems(), fetchPendingReviewItems()]);
       toast.success('Pulse rejected');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Reject failed';
@@ -1704,9 +1690,21 @@ export default function CultureFeedPage() {
     setSelectedCandidateIds((s) => s.filter((id) => id !== candidateId));
     setProcessingCandidateId(candidateId);
     try {
+      const supabase = getSupabase();
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...adminHeaders,
+      };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const res = await fetch('/api/admin/culture/trends/approve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...adminHeaders },
+        headers,
         body: JSON.stringify({ candidateId }),
       });
       if (!res.ok) {
