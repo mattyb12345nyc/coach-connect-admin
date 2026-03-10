@@ -5,57 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mic, Plus, Trash2, Save, Loader2, Pencil, X, User, ChevronDown, ChevronRight, Brain, BarChart3, AudioLines, Play, ExternalLink, RefreshCw, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Mic, Save, Loader2, User, ChevronDown, ChevronRight, Brain, BarChart3, AudioLines, Play, ExternalLink, RefreshCw, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { ScenarioGeneratorSection } from '@/components/admin/ScenarioGeneratorSection';
 import { VOICE_AGENTS, type VoiceAgentDifficulty, type VoiceAgentConfig } from '@/types/elevenlabs';
 
-type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
-
-interface Persona {
-  id: string;
-  name: string;
-  age: number;
-  type: string;
-  scenario: string;
-  difficulty: Difficulty;
-  image_url: string;
-  agent_id: string;
-  tip: string;
-  is_active: boolean;
-  sort_order: number;
-}
-
-type PersonaFormData = Omit<Persona, 'id'>;
-
-const EMPTY_FORM: PersonaFormData = {
-  name: '',
-  age: 30,
-  type: '',
-  scenario: '',
-  difficulty: 'Beginner',
-  image_url: '',
-  agent_id: '',
-  tip: '',
-  is_active: true,
-  sort_order: 0,
-};
-
-const DIFFICULTY_STYLES: Record<Difficulty, string> = {
-  Beginner: 'bg-green-100 text-green-800 border-green-200',
-  Intermediate: 'bg-amber-100 text-amber-800 border-amber-200',
-  Advanced: 'bg-rose-100 text-rose-800 border-rose-200',
-};
-
 export default function PracticeFloorPage() {
-  const [personas, setPersonas] = useState<Persona[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<PersonaFormData>(EMPTY_FORM);
-  const [editFormData, setEditFormData] = useState<PersonaFormData>(EMPTY_FORM);
+  const { isAdmin } = useAdminAuth();
 
   // Voice agents state
   const [voiceLiveData, setVoiceLiveData] = useState<Record<string, { status: 'active' | 'inactive' | 'unknown' }>>({});
@@ -119,259 +78,26 @@ export default function PracticeFloorPage() {
     }
   };
 
-  const fetchPersonas = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/personas');
-      if (!res.ok) throw new Error('Failed to fetch personas');
-      const data = await res.json();
-      setPersonas(data);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to load personas');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchPersonas();
     fetchAnalysisConfig();
     fetchVoiceAgentStatus();
-  }, [fetchPersonas, fetchAnalysisConfig, fetchVoiceAgentStatus]);
-
-  const handleCreate = async () => {
-    if (!formData.name.trim() || !formData.agent_id.trim()) {
-      toast.error('Name and Agent ID are required');
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await fetch('/api/admin/personas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to create persona');
-      }
-      const created = await res.json();
-      setPersonas(prev => [...prev, created]);
-      setFormData(EMPTY_FORM);
-      setShowAddForm(false);
-      toast.success('Persona created');
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUpdate = async (id: string) => {
-    setSaving(true);
-    try {
-      const res = await fetch('/api/admin/personas', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...editFormData }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update persona');
-      }
-      const updated = await res.json();
-      setPersonas(prev => prev.map(p => (p.id === id ? updated : p)));
-      setEditingId(null);
-      toast.success('Persona updated');
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    try {
-      const res = await fetch('/api/admin/personas', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to delete persona');
-      }
-      setPersonas(prev => prev.filter(p => p.id !== id));
-      toast.success(`"${name}" deleted`);
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const handleToggleActive = async (persona: Persona) => {
-    try {
-      const res = await fetch('/api/admin/personas', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: persona.id, is_active: !persona.is_active }),
-      });
-      if (!res.ok) throw new Error('Failed to toggle status');
-      const updated = await res.json();
-      setPersonas(prev => prev.map(p => (p.id === persona.id ? updated : p)));
-      toast.success(`${persona.name} ${updated.is_active ? 'activated' : 'deactivated'}`);
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const startEdit = (persona: Persona) => {
-    setEditingId(persona.id);
-    const { id, ...rest } = persona;
-    setEditFormData(rest);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-  };
-
-  const renderFormFields = (
-    data: PersonaFormData,
-    setData: (d: PersonaFormData) => void,
-  ) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          value={data.name}
-          onChange={e => setData({ ...data, name: e.target.value })}
-          placeholder="e.g. Sarah Mitchell"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="age">Age</Label>
-        <Input
-          id="age"
-          type="number"
-          value={data.age}
-          onChange={e => setData({ ...data, age: parseInt(e.target.value) || 0 })}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="type">Type</Label>
-        <Input
-          id="type"
-          value={data.type}
-          onChange={e => setData({ ...data, type: e.target.value })}
-          placeholder="e.g. First-Time Buyer"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="difficulty">Difficulty</Label>
-        <select
-          id="difficulty"
-          value={data.difficulty}
-          onChange={e => setData({ ...data, difficulty: e.target.value as Difficulty })}
-          className="flex h-11 w-full rounded-lg border border-input bg-background px-3.5 text-sm text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-        >
-          <option value="Beginner">Beginner</option>
-          <option value="Intermediate">Intermediate</option>
-          <option value="Advanced">Advanced</option>
-        </select>
-      </div>
-      <div className="sm:col-span-2 space-y-1.5">
-        <Label htmlFor="scenario">Scenario</Label>
-        <textarea
-          id="scenario"
-          value={data.scenario}
-          onChange={e => setData({ ...data, scenario: e.target.value })}
-          placeholder="Describe the roleplay scenario..."
-          rows={3}
-          className="flex w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="agent_id">Agent ID</Label>
-        <Input
-          id="agent_id"
-          value={data.agent_id}
-          onChange={e => setData({ ...data, agent_id: e.target.value })}
-          placeholder="agent_..."
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="image_url">Image URL</Label>
-        <Input
-          id="image_url"
-          value={data.image_url}
-          onChange={e => setData({ ...data, image_url: e.target.value })}
-          placeholder="https://..."
-        />
-      </div>
-      <div className="sm:col-span-2 space-y-1.5">
-        <Label htmlFor="tip">Tip</Label>
-        <Input
-          id="tip"
-          value={data.tip}
-          onChange={e => setData({ ...data, tip: e.target.value })}
-          placeholder="Coaching tip for this persona..."
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="sort_order">Sort Order</Label>
-        <Input
-          id="sort_order"
-          type="number"
-          value={data.sort_order}
-          onChange={e => setData({ ...data, sort_order: parseInt(e.target.value) || 0 })}
-        />
-      </div>
-      <div className="flex items-end pb-1">
-        <label className="flex items-center gap-2.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={data.is_active}
-            onChange={e => setData({ ...data, is_active: e.target.checked })}
-            className="h-4 w-4 rounded border-gray-300 text-coach-gold focus:ring-coach-gold"
-          />
-          <span className="text-sm font-medium text-foreground/90">Active</span>
-        </label>
-      </div>
-    </div>
-  );
+  }, [fetchAnalysisConfig, fetchVoiceAgentStatus]);
 
   return (
     <RoleGate minRole="store_manager" readOnlyFor={['store_manager']}>
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div className="mb-8">
             <div>
               <h1 className="text-2xl font-bold text-coach-mahogany flex items-center gap-2.5">
                 <Mic className="h-6 w-6 text-coach-gold" />
                 Practice Floor
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Manage roleplay personas and voice agent settings
+                Manage voice agent settings, evaluation config, and admin scenario generation
               </p>
             </div>
-            <Button
-              onClick={() => {
-                setFormData(EMPTY_FORM);
-                setShowAddForm(prev => !prev);
-              }}
-              className="bg-coach-gold hover:bg-coach-gold/90 text-white"
-            >
-              {showAddForm ? (
-                <>
-                  <X className="h-4 w-4 mr-1.5" /> Cancel
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-1.5" /> Add Persona
-                </>
-              )}
-            </Button>
           </div>
 
           {/* Post-Call Analysis Config */}
@@ -525,39 +251,6 @@ export default function PracticeFloorPage() {
             )}
           </Card>
 
-          {/* Add Form */}
-          {showAddForm && (
-            <Card className="mb-8 border-coach-gold/30 bg-white">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-coach-mahogany mb-4">
-                  New Persona
-                </h2>
-                {renderFormFields(formData, setFormData)}
-                <div className="flex justify-end gap-2 mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAddForm(false)}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleCreate}
-                    disabled={saving}
-                    className="bg-coach-gold hover:bg-coach-gold/90 text-white"
-                  >
-                    {saving ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-1.5" />
-                    )}
-                    Create Persona
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          )}
-
           {/* Voice Agents */}
           <div className="mt-10">
             <div className="flex items-center justify-between mb-5">
@@ -598,6 +291,8 @@ export default function PracticeFloorPage() {
               );
             })}
           </div>
+
+          {isAdmin && <ScenarioGeneratorSection />}
 
         </div>
     </div>
