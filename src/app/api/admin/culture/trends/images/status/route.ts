@@ -49,10 +49,6 @@ export async function POST(request: NextRequest) {
   const adminUser = await getValidatedAdminUser(request);
   if (!adminUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const _t0 = Date.now();
-  // #region agent log
-  const _dl = (loc: string, msg: string, data: Record<string, unknown>) => { try { const fs = require('fs'); fs.appendFileSync('/tmp/debug-99cc76.log', JSON.stringify({sessionId:'99cc76',location:loc,message:msg,data,timestamp:Date.now()})+'\n'); } catch {} };
-  // #endregion
   try {
     const supabase = getAdminClient();
     const body = await request.json().catch(() => ({}));
@@ -79,22 +75,12 @@ export async function POST(request: NextRequest) {
 
     const { data: pending, error: fetchErr } = await pendingQuery;
 
-    // #region agent log
-    _dl('status/route.ts:POST:pending-query', 'Pending query result', { pendingCount: pending?.length ?? 0, fetchErr: fetchErr?.message ?? null, hypothesisId: 'H1' });
-    // #endregion
-
     if (fetchErr) throw fetchErr;
     if (!pending?.length) {
-      // #region agent log
-      _dl('status/route.ts:POST:no-pending', 'No pending candidates found', { hypothesisId: 'H1' });
-      // #endregion
       return NextResponse.json({ processed: 0, remaining: 0 });
     }
 
     const candidate = pending[0];
-    // #region agent log
-    _dl('status/route.ts:POST:processing', 'Starting image generation', { candidateId: candidate.id, title: candidate.title, imagePrompt: (candidate.image_prompt || candidate.title).substring(0, 80), hypothesisId: 'H4' });
-    // #endregion
 
     await supabase
       .from('culture_trend_candidates')
@@ -107,10 +93,7 @@ export async function POST(request: NextRequest) {
         { numberOfImages: 1, ...imageOptions }
       );
       const imageUrl = result.images[0] || null;
-      // #region agent log
-      _dl('status/route.ts:POST:gemini-result', 'Gemini generation result', { hasImage: !!imageUrl, imageUrlLength: imageUrl?.length ?? 0, diagnostics: result.diagnostics, elapsedMs: Date.now() - _t0, hypothesisId: 'H3,H4' });
-      // #endregion
-      const { error: updateErr } = await supabase
+      await supabase
         .from('culture_trend_candidates')
         .update({
           image_url: imageUrl,
@@ -118,14 +101,8 @@ export async function POST(request: NextRequest) {
           image_error: imageUrl ? null : (result.diagnostics || 'No image returned'),
         })
         .eq('id', candidate.id);
-      // #region agent log
-      _dl('status/route.ts:POST:db-update', 'DB update after generation', { updateErr: updateErr?.message ?? null, hypothesisId: 'H3' });
-      // #endregion
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Image generation failed';
-      // #region agent log
-      _dl('status/route.ts:POST:gemini-error', 'Gemini generation threw', { error: msg, elapsedMs: Date.now() - _t0, hypothesisId: 'H4' });
-      // #endregion
       await supabase
         .from('culture_trend_candidates')
         .update({ image_status: 'failed', image_error: msg })
@@ -141,15 +118,9 @@ export async function POST(request: NextRequest) {
     }
     const { count: remainingCount } = await remainingQuery;
 
-    // #region agent log
-    _dl('status/route.ts:POST:done', 'Processing complete', { remaining: remainingCount, totalElapsedMs: Date.now() - _t0, hypothesisId: 'H4' });
-    // #endregion
     return NextResponse.json({ processed: 1, remaining: remainingCount || 0 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Processing failed';
-    // #region agent log
-    _dl('status/route.ts:POST:top-error', 'Top-level error', { error: msg, elapsedMs: Date.now() - _t0, hypothesisId: 'H1,H4' });
-    // #endregion
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
