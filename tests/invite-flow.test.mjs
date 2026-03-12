@@ -55,37 +55,88 @@ test('beta-invite API route is removed and no src references remain', () => {
   }
 });
 
-test('main invitations API explicitly creates pending invites and revokes instead of hard deleting', () => {
+test('legacy invitations API is revoke-only and never hard deletes invite records', () => {
   const source = read('src/app/api/admin/invitations/route.ts');
 
   assert.match(
     source,
-    /status:\s*'pending'/,
-    'main invitations flow must explicitly create invites with pending status'
-  );
-  assert.match(
-    source,
     /status:\s*'revoked'/,
-    'main invitations delete/revoke flow must mark invites as revoked'
+    'legacy invitations delete/revoke flow must mark invites as revoked'
+  );
+  assert.equal(
+    source.includes('Legacy invite creation has been retired'),
+    true,
+    'legacy invitations API should explicitly retire old invite creation'
   );
   assert.equal(
     source.includes(".from('invites')\n      .delete()"),
     false,
-    'main invitations flow must not hard delete invite records'
+    'legacy invitations flow must not hard delete invite records'
   );
 });
 
 test('Invitations page presents revoke semantics instead of delete semantics for pending invites', () => {
+  const pageSource = read('src/app/admin/invitations/page.tsx');
+  const hookSource = read('src/hooks/admin/useInvitations.ts');
+
+  assert.equal(
+    hookSource.includes('Invitation revoked'),
+    true,
+    'Legacy invitations flow should surface a revoke success path'
+  );
+  assert.equal(
+    pageSource.includes('>Revoke<') || pageSource.includes('Revoke'),
+    true,
+    'Invitations page should present a revoke action'
+  );
+});
+
+test('Invitations page is a legacy history surface and points new user creation to the users page', () => {
   const source = read('src/app/admin/invitations/page.tsx');
 
   assert.equal(
-    source.includes('Invitation revoked'),
+    source.includes('Legacy Invitations'),
     true,
-    'Invitations page should surface a revoke success path'
+    'Invitations page should be labeled as a legacy invitation history surface'
   );
   assert.equal(
-    source.includes('>Revoke<') || source.includes('Revoke'),
+    source.includes('/admin/users'),
     true,
-    'Invitations page should present a revoke action'
+    'Invitations page should point admins to the users page for new invites'
+  );
+  assert.equal(
+    source.includes('Send Invitation'),
+    false,
+    'Invitations page should not offer the old single-send invitation flow'
+  );
+  assert.equal(
+    source.includes('Bulk Invite'),
+    false,
+    'Invitations page should not offer the old bulk invite flow'
+  );
+});
+
+test('Invitation list no longer exposes resend actions for the retired invite flow', () => {
+  const source = read('src/components/admin/invitations/InvitationList.tsx');
+
+  assert.equal(
+    source.includes('Resend'),
+    false,
+    'Invitation list should not expose resend actions for the retired flow'
+  );
+  assert.equal(
+    source.includes('onResend'),
+    false,
+    'Invitation list should not accept an onResend handler anymore'
+  );
+});
+
+test('legacy invitations API no longer sends Supabase invite emails for create or resend', () => {
+  const source = read('src/app/api/admin/invitations/route.ts');
+
+  assert.equal(
+    source.includes('inviteUserByEmail'),
+    false,
+    'legacy invitations API must not call the retired inviteUserByEmail flow'
   );
 });

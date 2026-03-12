@@ -93,9 +93,9 @@ export const Navbar: React.FC<NavbarProps> = ({ showBackButton = true }) => {
       return pathname === '/';
     }
     if (href === '/admin/today') {
-      return pathname.startsWith('/admin');
+      return pathname?.startsWith('/admin') ?? false;
     }
-    return pathname.startsWith(href);
+    return pathname?.startsWith(href) ?? false;
   };
 
   return (

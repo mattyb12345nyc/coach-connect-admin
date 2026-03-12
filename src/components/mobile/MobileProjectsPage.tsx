@@ -230,8 +230,8 @@ export const MobileProjectsPage: React.FC<MobileProjectsPageProps> = ({ classNam
   const [fromDirectNavigation, setFromDirectNavigation] = useState(false);
   
   // Get URL params
-  const projectIdFromUrl = searchParams.get('id');
-  const tabFromUrl = searchParams.get('tab') as SettingsTab;
+  const projectIdFromUrl = searchParams?.get('id') ?? null;
+  const tabFromUrl = (searchParams?.get('tab') as SettingsTab | null) ?? null;
   
   // Initialize data and detect direct navigation
   useEffect(() => {

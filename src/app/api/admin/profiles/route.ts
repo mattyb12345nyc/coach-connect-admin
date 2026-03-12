@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 
 const PROFILE_SELECT = 'id, first_name, last_name, display_name, avatar_url, store_id, role, status, is_approved, created_at, stores(id, store_number, store_name, city, state, region)';
 const SESSION_METRICS_SELECT = 'user_id, overall_score, scoring_status';
+const MANAGED_PROFILE_STATUSES = ['pending', 'active', 'suspended', 'deactivated'] as const;
 
 function matchesProfileSearch(
   profile: RealProfileRecord & { email?: string | null },
@@ -102,11 +103,24 @@ export async function PUT(request: NextRequest) {
 
     const allowedFields = [
       'status', 'role', 'store_id', 'first_name', 'last_name',
-      'display_name', 'avatar_url', 'is_approved',
+      'avatar_url', 'is_approved',
     ];
     const sanitized: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (key in updates) sanitized[key] = updates[key];
+    }
+
+    if ('status' in sanitized) {
+      const nextStatus = sanitized.status;
+      if (
+        typeof nextStatus !== 'string' ||
+        !MANAGED_PROFILE_STATUSES.includes(nextStatus as typeof MANAGED_PROFILE_STATUSES[number])
+      ) {
+        return NextResponse.json(
+          { error: `status must be one of ${MANAGED_PROFILE_STATUSES.join(', ')}` },
+          { status: 400 }
+        );
+      }
     }
 
     const { data, error } = await supabase

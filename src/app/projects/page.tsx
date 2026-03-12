@@ -283,8 +283,8 @@ function ProjectsPageContent() {
   
   // Get query parameters to check for project ID and tab
   const searchParams = useSearchParams();
-  const projectIdFromUrl = searchParams.get('id');
-  const tabFromUrl = searchParams.get('tab') as SettingsTab;
+  const projectIdFromUrl = searchParams?.get('id') ?? null;
+  const tabFromUrl = (searchParams?.get('tab') as SettingsTab | null) ?? null;
   const defaultCoachProjectId = typeof process.env.NEXT_PUBLIC_COACH_PROJECT_ID !== 'undefined'
     ? process.env.NEXT_PUBLIC_COACH_PROJECT_ID
     : '90868';
