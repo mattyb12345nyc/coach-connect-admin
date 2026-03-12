@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Loader2, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,13 +21,16 @@ type UserActionsMenuProps<TUser> = {
     status: string;
   };
   onUserUpdated: (updatedUser: TUser) => void;
+  onUserDeleted?: (userId: string) => void;
 };
 
 export function UserActionsMenu<TUser>({
   user,
   onUserUpdated,
+  onUserDeleted,
 }: UserActionsMenuProps<TUser>) {
-  const [action, setAction] = useState<'reset' | 'deactivate' | 'reactivate' | null>(null);
+  const [action, setAction] = useState<'reset' | 'deactivate' | 'reactivate' | 'delete' | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const isBusy = action !== null;
 
@@ -88,36 +92,80 @@ export function UserActionsMenu<TUser>({
     await handleStatusChange('active');
   };
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Open actions for ${user.display_name || user.email || 'user'}`}
-          disabled={isBusy}
-        >
-          {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-        </Button>
-      </DropdownMenuTrigger>
+  const handleDeleteUser = async () => {
+    setAction('delete');
 
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem disabled={isBusy || !user.email} onClick={handleResetPassword}>
-          Reset Password
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {user.status === 'active' ? (
-          <DropdownMenuItem disabled={isBusy} onClick={handleDeactivate}>
-            Deactivate
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'DELETE',
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+
+      setDeleteDialogOpen(false);
+      onUserDeleted?.(user.id);
+      toast.success('User deleted');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete user');
+    } finally {
+      setAction(null);
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Open actions for ${user.display_name || user.email || 'user'}`}
+            disabled={isBusy}
+          >
+            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem disabled={isBusy || !user.email} onClick={handleResetPassword}>
+            Reset Password
           </DropdownMenuItem>
-        ) : null}
-        {user.status === 'suspended' || user.status === 'deactivated' ? (
-          <DropdownMenuItem disabled={isBusy} onClick={handleReactivate}>
-            Reactivate
+          <DropdownMenuSeparator />
+          {user.status === 'active' ? (
+            <DropdownMenuItem disabled={isBusy} onClick={handleDeactivate}>
+              Deactivate
+            </DropdownMenuItem>
+          ) : null}
+          {user.status === 'suspended' || user.status === 'deactivated' ? (
+            <DropdownMenuItem disabled={isBusy} onClick={handleReactivate}>
+              Reactivate
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={isBusy}
+            onClick={() => setDeleteDialogOpen(true)}
+            className="text-red-600 focus:bg-red-50 focus:text-red-700"
+          >
+            Delete User
           </DropdownMenuItem>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        title="Delete User"
+        description={`Permanently delete ${user.email || 'this user'}? This will remove their account and all data. This cannot be undone.`}
+        confirmLabel="Delete User"
+        onConfirm={handleDeleteUser}
+        onCancel={() => setDeleteDialogOpen(false)}
+        isDangerous
+        loading={action === 'delete'}
+      />
+    </>
   );
 }

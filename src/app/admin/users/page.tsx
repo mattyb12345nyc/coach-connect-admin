@@ -231,6 +231,10 @@ export default function UsersPage() {
     );
   };
 
+  const handleUserDeleted = (deletedUserId: string) => {
+    setUsers((previousUsers) => previousUsers.filter((user) => user.id !== deletedUserId));
+  };
+
   const statusTabs: Array<{ key: StatusFilter; label: string }> = [
     { key: 'all', label: 'All' },
     { key: 'pending', label: `Pending (${stats.pending})` },
@@ -493,6 +497,7 @@ export default function UsersPage() {
                               <UserActionsMenu<ProfileUser>
                                 user={user}
                                 onUserUpdated={handleUserUpdated}
+                                onUserDeleted={handleUserDeleted}
                               />
                             </div>
                           </td>

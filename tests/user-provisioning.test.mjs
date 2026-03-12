@@ -63,3 +63,28 @@ test('new provisioning routes must use shared helper and recovery links only', (
     );
   }
 });
+
+test('user detail route supports permanent admin user deletion', () => {
+  const userRoute = read('src/app/api/admin/users/[id]/route.ts');
+
+  assert.equal(
+    userRoute.includes('export async function DELETE'),
+    true,
+    'user detail route should expose a DELETE handler'
+  );
+  assert.equal(
+    userRoute.includes("return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })"),
+    true,
+    'delete route should block self-deletion'
+  );
+  assert.equal(
+    userRoute.includes(".from('profiles')") && userRoute.includes('.delete()'),
+    true,
+    'delete route should remove the profile record before deleting auth'
+  );
+  assert.equal(
+    userRoute.includes('.auth.admin.deleteUser('),
+    true,
+    'delete route should remove the Supabase auth user'
+  );
+});

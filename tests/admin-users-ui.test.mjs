@@ -69,6 +69,37 @@ test('users management UI exposes reset password and status actions', () => {
   assert.equal(pageSource.includes('Status'), true);
 });
 
+test('users management UI exposes a destructive delete action with confirmation copy', () => {
+  const actionsSource = read('src/components/admin/users/UserActionsMenu.tsx');
+  const pageSource = read('src/app/admin/users/page.tsx');
+
+  assert.equal(actionsSource.includes('Delete User'), true);
+  assert.equal(actionsSource.includes('Permanently delete'), true);
+  assert.equal(actionsSource.includes('/api/admin/users/${user.id}'), true);
+  assert.equal(actionsSource.includes('User deleted'), true);
+  assert.equal(actionsSource.includes('text-red-600'), true);
+  assert.equal(
+    pageSource.includes('onUserDeleted'),
+    true,
+    'users page should pass a deletion callback so the local list refreshes after delete'
+  );
+});
+
+test('admin navigation hides the Invitations tab', () => {
+  const layoutSource = read('src/app/admin/layout.tsx');
+
+  assert.equal(
+    layoutSource.includes("id: 'invitations'"),
+    false,
+    'admin layout should no longer include the Invitations nav item'
+  );
+  assert.equal(
+    layoutSource.includes("label: 'Invitations'"),
+    false,
+    'admin layout should no longer render Invitations in the nav'
+  );
+});
+
 test('profiles API validates managed user status values', () => {
   const source = read('src/app/api/admin/profiles/route.ts');
 

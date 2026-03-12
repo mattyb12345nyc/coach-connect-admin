@@ -16,7 +16,6 @@ import {
   Store,
   Shield,
   Loader2,
-  Mail,
   History,
   Settings,
   UserCircle,
@@ -55,7 +54,6 @@ const navSections: NavSection[] = [
       { id: 'culture', label: 'Pulse Feed', icon: Sparkles, href: '/admin/culture', minRole: 'store_manager' },
       { id: 'users', label: 'Users', icon: User, href: '/admin/users', minRole: 'store_manager' },
       { id: 'stores', label: 'Stores', icon: Store, href: '/admin/stores', minRole: 'store_manager' },
-      { id: 'invitations', label: 'Invitations', icon: Mail, href: '/admin/invitations', minRole: 'store_manager' },
     ],
   },
   {

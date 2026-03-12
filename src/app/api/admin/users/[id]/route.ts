@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { getUserDetails } from '@/lib/admin/analytics';
+import { getAdminClient } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   const adminUser = await getValidatedAdminUser(request);
@@ -38,5 +39,47 @@ export async function GET(request: NextRequest) {
       { success: false, error: 'Failed to fetch user details' },
       { status: 500 }
     );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: { id: string } }
+) {
+  const adminUser = await getValidatedAdminUser(request);
+  if (!adminUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = context.params;
+  if (!id) {
+    return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+  }
+
+  if (id === adminUser.user.id) {
+    return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
+  }
+
+  try {
+    const supabase = getAdminClient();
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', id);
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    const { error: authError } = await supabase.auth.admin.deleteUser(id);
+    if (authError) {
+      throw authError;
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
