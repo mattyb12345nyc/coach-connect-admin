@@ -70,7 +70,7 @@ export async function sendCoachPulseActionEmail(
   options: CoachPulseActionEmailOptions
 ): Promise<void> {
   const result = await resend.emails.send({
-    from: 'Coach Pulse <noreply@futureproof.work>',
+    from: 'Coach Pulse <noreply@coach-mail.futureproof.work>',
     to: payload.email,
     subject: options.subject,
     html: buildCoachPulseActionEmailHtml({
