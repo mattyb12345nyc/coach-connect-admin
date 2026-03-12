@@ -25,6 +25,18 @@ export type ResendClientLike = {
   };
 };
 
+function buildDirectAuthLink(actionLink: string): string {
+  const verifyUrl = new URL(actionLink);
+  const token = verifyUrl.searchParams.get('token');
+  const type = verifyUrl.searchParams.get('type') || 'recovery';
+
+  if (!token) {
+    throw new Error('Supabase recovery link is missing a token');
+  }
+
+  return `https://coach.futureproof.work/auth/confirm?token_hash=${token}&type=${type}`;
+}
+
 export function buildCoachPulseActionEmailHtml(
   {
     fullName,
@@ -32,6 +44,8 @@ export function buildCoachPulseActionEmailHtml(
   }: Omit<CoachPulseUserEmailPayload, 'email'>,
   options: CoachPulseActionEmailOptions
 ): string {
+  const directLink = buildDirectAuthLink(actionLink);
+
   return `
     <div style="background:#1C1917;padding:48px 24px;font-family:Georgia,serif;text-align:center;">
       <img src="https://cdn.mcauto-images-production.sendgrid.net/d157e984273caff5/3acafde1-d902-4fab-9ed1-4e8afcbe35fd/225x225.png"
@@ -40,7 +54,7 @@ export function buildCoachPulseActionEmailHtml(
       <p style="color:#F5F0EB;font-size:16px;margin-bottom:32px;">
         Hi ${fullName},<br/>${options.introLine}
       </p>
-      <a href="${actionLink}"
+      <a href="${directLink}"
          style="display:inline-block;background:#C9A227;color:#1C1917;padding:16px 40px;
                 font-size:14px;font-weight:700;text-decoration:none;letter-spacing:1px;
                 text-transform:uppercase;">
