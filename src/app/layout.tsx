@@ -86,9 +86,10 @@ export const metadata: Metadata = {
   description: "Admin dashboard for Coach Pulse",
   icons: {
     icon: [
+      { url: "/icon.png", type: "image/png", sizes: "225x225" },
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.ico", type: "image/x-icon" },
     ],
+    shortcut: "/favicon.ico",
     apple: "/icons/icon-192x192.png",
   },
   manifest: "/manifest.json",
