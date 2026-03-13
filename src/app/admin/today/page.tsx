@@ -14,6 +14,8 @@ import {
   X,
   Check,
   AlertTriangle,
+  Clock,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -68,6 +70,7 @@ interface WhatsNewItem {
   scope_type: 'global' | 'region' | 'store';
   store_id: string | null;
   store_region: string | null;
+  updated_at?: string;
 }
 
 interface StoreSummary {
@@ -254,6 +257,19 @@ function ActiveToggle({
   );
 }
 
+function getStaleness(dateStr: string | null | undefined): {
+  label: string;
+  dot: string;
+  text: string;
+  daysAgo: number;
+} {
+  if (!dateStr) return { label: 'Never updated', dot: 'bg-red-500', text: 'text-red-600', daysAgo: Infinity };
+  const daysAgo = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (daysAgo <= 7) return { label: `Updated ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo}d ago`}`, dot: 'bg-emerald-500', text: 'text-emerald-600', daysAgo };
+  if (daysAgo <= 14) return { label: `Updated ${daysAgo}d ago`, dot: 'bg-amber-500', text: 'text-amber-600', daysAgo };
+  return { label: `Updated ${daysAgo}d ago`, dot: 'bg-red-500', text: 'text-red-600', daysAgo };
+}
+
 function SectionHeader({
   title,
   icon: Icon,
@@ -261,6 +277,7 @@ function SectionHeader({
   expanded,
   onToggle,
   onAdd,
+  lastUpdated,
 }: {
   title: string;
   icon: React.ElementType;
@@ -268,28 +285,50 @@ function SectionHeader({
   expanded: boolean;
   onToggle: () => void;
   onAdd: () => void;
+  lastUpdated?: string | null;
 }) {
+  const staleness = lastUpdated !== undefined ? getStaleness(lastUpdated) : null;
+
   return (
     <div className="flex items-center justify-between px-6 py-4 bg-white border border-gray-200 rounded-xl shadow-sm">
       <button
         onClick={onToggle}
-        className="flex items-center gap-3 text-left flex-1"
+        className="flex items-center gap-3 text-left flex-1 min-w-0"
       >
         {expanded ? (
-          <ChevronDown className="w-5 h-5 text-coach-mahogany" />
+          <ChevronDown className="w-5 h-5 text-coach-mahogany flex-shrink-0" />
         ) : (
-          <ChevronRight className="w-5 h-5 text-gray-400" />
+          <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
         )}
-        <Icon className="w-5 h-5 text-coach-gold" />
+        <Icon className="w-5 h-5 text-coach-gold flex-shrink-0" />
         <span className="text-lg font-semibold text-gray-900">{title}</span>
         <span className="ml-2 inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
           {count}
         </span>
+
+        {staleness && (
+          <span className={cn('ml-3 inline-flex items-center gap-1.5 text-xs font-medium', staleness.text)}>
+            <span className={cn('h-2 w-2 rounded-full flex-shrink-0', staleness.dot)} />
+            <Clock className="w-3 h-3 flex-shrink-0" />
+            {staleness.label}
+          </span>
+        )}
       </button>
-      <Button size="sm" variant="outline" onClick={onAdd}>
-        <Plus className="w-4 h-4 mr-1.5" />
-        Add
-      </Button>
+
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {staleness && (
+          <span
+            title="Recommended: refresh weekly (Mondays); optional mid-week micro-updates"
+            className="text-gray-400 hover:text-gray-600 cursor-help transition-colors"
+          >
+            <Info className="w-4 h-4" />
+          </span>
+        )}
+        <Button size="sm" variant="outline" onClick={onAdd}>
+          <Plus className="w-4 h-4 mr-1.5" />
+          Add
+        </Button>
+      </div>
     </div>
   );
 }
@@ -796,6 +835,15 @@ export default function TodayDashboardPage() {
     }
   };
 
+  const whatsNewLastUpdated = useMemo(() => {
+    if (whatsNew.length === 0) return null;
+    const dates = whatsNew
+      .map(item => item.updated_at)
+      .filter((d): d is string => !!d)
+      .map(d => new Date(d).getTime());
+    return dates.length > 0 ? new Date(Math.max(...dates)).toISOString() : null;
+  }, [whatsNew]);
+
   const isEditingTable = (table: TableName) =>
     editingForm?.table === table;
 
@@ -954,6 +1002,7 @@ export default function TodayDashboardPage() {
                 expanded={expanded.whats_new}
                 onToggle={() => toggleSection('whats_new')}
                 onAdd={() => openAddForm('whats_new')}
+                lastUpdated={whatsNewLastUpdated}
               />
               {expanded.whats_new && (
                 <div className="mt-3 space-y-2 pl-2">
