@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getValidatedAdminUser } from '@/lib/admin-auth';
 import { getAdminClient } from '@/lib/supabase';
+import { checkContent } from '@/lib/content-filter';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +96,29 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json(await hydratePosts(supabase, data ?? []));
+    const posts = data ?? [];
+    const hydrated = await hydratePosts(supabase, posts);
+
+    if (flagged === 'true' && posts.length > 0) {
+      const postIds = posts.map(p => p.id);
+      const { data: flags } = await supabase
+        .from('flagged_content')
+        .select('post_id, reason, detail, created_at')
+        .in('post_id', postIds)
+        .order('created_at', { ascending: false });
+
+      const flagMap = new Map<string, Array<{ reason: string; detail: string | null }>>();
+      for (const f of flags ?? []) {
+        if (!flagMap.has(f.post_id)) flagMap.set(f.post_id, []);
+        flagMap.get(f.post_id)!.push({ reason: f.reason, detail: f.detail });
+      }
+
+      for (const post of hydrated) {
+        (post as any).flag_reasons = flagMap.get(post.id) ?? [];
+      }
+    }
+
+    return NextResponse.json(hydrated);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
@@ -108,12 +131,30 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getAdminClient();
     const body = await request.json();
+
+    const contentCheck = checkContent(body.content ?? '');
+    if (contentCheck.flagged) {
+      body.status = 'hidden';
+      body.is_flagged = true;
+    }
+
     const { data, error } = await supabase
       .from('community_posts')
       .insert(body)
       .select()
       .single();
     if (error) throw error;
+
+    if (contentCheck.flagged && data) {
+      await supabase.from('flagged_content').insert(
+        contentCheck.reasons.map(reason => ({
+          post_id: data.id,
+          reason,
+          detail: 'Automated content filter',
+          flagged_by: null,
+        }))
+      );
+    }
 
     const [hydrated] = await hydratePosts(supabase, data ? [data] : []);
     return NextResponse.json(hydrated ?? data, { status: 201 });

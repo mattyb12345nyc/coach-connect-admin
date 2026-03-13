@@ -18,11 +18,22 @@ import {
   Lightbulb,
   Award,
   HelpCircle,
+  CheckSquare,
+  Square,
+  MinusSquare,
+  RotateCcw,
+  ShieldAlert,
+  Bug,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RoleGate } from '@/components/admin/RoleGate';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+
+interface FlagReason {
+  reason: 'profanity' | 'spam' | 'reported' | 'other';
+  detail: string | null;
+}
 
 interface CommunityPost {
   id: string;
@@ -39,10 +50,12 @@ interface CommunityPost {
   comments_count: number;
   saves_count: number;
   created_at: string;
+  flag_reasons?: FlagReason[];
 }
 
 type PostTypeFilter = 'all' | 'insight' | 'success' | 'question';
 type StatusFilter = 'all' | 'active' | 'hidden' | 'removed';
+type BulkAction = 'hide' | 'remove' | 'restore';
 
 const POST_TYPE_TABS: { value: PostTypeFilter; label: string; icon: typeof Lightbulb }[] = [
   { value: 'all', label: 'All', icon: Users },
@@ -68,6 +81,13 @@ const STATUS_CONFIG: Record<CommunityPost['status'], { label: string; bg: string
   active: { label: 'Active', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
   hidden: { label: 'Hidden', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
   removed: { label: 'Removed', bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+};
+
+const FLAG_REASON_CONFIG: Record<string, { label: string; icon: typeof ShieldAlert; bg: string; text: string }> = {
+  profanity: { label: 'Profanity', icon: ShieldAlert, bg: 'bg-red-50', text: 'text-red-700' },
+  spam: { label: 'Spam', icon: Bug, bg: 'bg-orange-50', text: 'text-orange-700' },
+  reported: { label: 'Reported', icon: Flag, bg: 'bg-violet-50', text: 'text-violet-700' },
+  other: { label: 'Other', icon: AlertTriangle, bg: 'bg-gray-100', text: 'text-gray-700' },
 };
 
 function getInitials(name: string | null | undefined): string {
@@ -108,6 +128,10 @@ export default function CommunityPage() {
   const [updatingPosts, setUpdatingPosts] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<{ type: 'hide' | 'remove'; id: string; name: string } | null>(null);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState<BulkAction | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
@@ -121,6 +145,7 @@ export default function CommunityPage() {
       if (!res.ok) throw new Error('Failed to fetch posts');
       const data = await res.json();
       setPosts(Array.isArray(data) ? data : []);
+      setSelectedIds(new Set());
     } catch {
       toast.error('Failed to load community posts');
     } finally {
@@ -177,6 +202,38 @@ export default function CommunityPage() {
     }
   };
 
+  const executeBulkAction = async (action: BulkAction) => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+
+    const statusMap: Record<BulkAction, string> = {
+      hide: 'hidden',
+      remove: 'removed',
+      restore: 'active',
+    };
+
+    try {
+      const res = await fetch('/api/admin/community/bulk', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          updates: { status: statusMap[action] },
+        }),
+      });
+      if (!res.ok) throw new Error('Bulk update failed');
+      const result = await res.json();
+      toast.success(`${result.updated} post(s) updated`);
+      setSelectedIds(new Set());
+      await fetchPosts();
+    } catch {
+      toast.error('Bulk action failed');
+    } finally {
+      setBulkLoading(false);
+      setBulkConfirm(null);
+    }
+  };
+
   const toggleExpanded = (id: string) => {
     setExpandedPosts(prev => {
       const next = new Set(prev);
@@ -186,12 +243,32 @@ export default function CommunityPage() {
     });
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === safePosts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(safePosts.map(p => p.id)));
+    }
+  };
+
   const safePosts = Array.isArray(posts) ? posts : [];
   const stats = {
     total: safePosts.length,
     active: safePosts.filter(p => p?.status === 'active').length,
     flagged: safePosts.filter(p => p?.is_flagged).length,
   };
+
+  const allSelected = safePosts.length > 0 && selectedIds.size === safePosts.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < safePosts.length;
 
   return (
     <RoleGate minRole="manager">
@@ -234,9 +311,79 @@ export default function CommunityPage() {
             </Card>
           </div>
 
+          {/* Bulk Action Bar */}
+          {selectedIds.size > 0 && (
+            <Card className="p-3 mb-4 border-coach-gold/40 bg-coach-gold/[0.03]">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-coach-black">
+                  {selectedIds.size} post{selectedIds.size !== 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBulkConfirm('restore')}
+                    disabled={bulkLoading}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    Restore
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBulkConfirm('hide')}
+                    disabled={bulkLoading}
+                    className="text-amber-700 border-amber-200 hover:bg-amber-50"
+                  >
+                    <EyeOff className="h-3.5 w-3.5 mr-1.5" />
+                    Hide
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBulkConfirm('remove')}
+                    disabled={bulkLoading}
+                    className="text-red-700 border-red-200 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Remove
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedIds(new Set())}
+                    disabled={bulkLoading}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Filter Bar */}
           <Card className="p-3 mb-6">
             <div className="flex flex-wrap items-center gap-3">
+              {/* Select All Checkbox */}
+              {safePosts.length > 0 && (
+                <>
+                  <button
+                    onClick={toggleSelectAll}
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                    title={allSelected ? 'Deselect all' : 'Select all'}
+                  >
+                    {allSelected ? (
+                      <CheckSquare className="h-4 w-4 text-coach-gold" />
+                    ) : someSelected ? (
+                      <MinusSquare className="h-4 w-4 text-coach-gold" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                  </button>
+                  <div className="h-6 w-px bg-gray-200" />
+                </>
+              )}
+
               {/* Type Tabs */}
               <div className="flex rounded-lg bg-gray-100 p-0.5">
                 {POST_TYPE_TABS.map(tab => {
@@ -309,6 +456,7 @@ export default function CommunityPage() {
                 const TypeIcon = typeConfig.icon;
                 const isExpanded = expandedPosts.has(post.id);
                 const isUpdating = updatingPosts.has(post.id);
+                const isSelected = selectedIds.has(post.id);
                 const content = post.content ?? '';
                 const shouldTruncate = content.length > 200;
 
@@ -318,11 +466,24 @@ export default function CommunityPage() {
                     className={cn(
                       'p-5 transition-all',
                       post.is_pinned && 'ring-1 ring-coach-gold/40 bg-coach-gold/[0.02]',
-                      post.is_flagged && 'ring-1 ring-red-200 bg-red-50/30',
+                      post.is_flagged && !isSelected && 'ring-1 ring-red-200 bg-red-50/30',
+                      isSelected && 'ring-2 ring-coach-gold/60 bg-coach-gold/[0.04]',
                       isUpdating && 'opacity-60 pointer-events-none'
                     )}
                   >
                     <div className="flex items-start gap-3">
+                      {/* Checkbox */}
+                      <button
+                        onClick={() => toggleSelect(post.id)}
+                        className="mt-1 flex-shrink-0"
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="h-4.5 w-4.5 text-coach-gold" />
+                        ) : (
+                          <Square className="h-4.5 w-4.5 text-gray-300 hover:text-gray-500 transition-colors" />
+                        )}
+                      </button>
+
                       {/* Avatar */}
                       <div className="h-9 w-9 rounded-full bg-coach-mahogany/10 flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-semibold text-coach-mahogany">
@@ -361,6 +522,26 @@ export default function CommunityPage() {
                             </span>
                           </div>
                         </div>
+
+                        {/* Flag Reason Badges */}
+                        {post.is_flagged && post.flag_reasons && post.flag_reasons.length > 0 && (
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            {post.flag_reasons.map((fr, i) => {
+                              const cfg = FLAG_REASON_CONFIG[fr.reason] ?? FLAG_REASON_CONFIG.other;
+                              const FlagIcon = cfg.icon;
+                              return (
+                                <span
+                                  key={`${fr.reason}-${i}`}
+                                  className={cn('flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium', cfg.bg, cfg.text)}
+                                  title={fr.detail ?? undefined}
+                                >
+                                  <FlagIcon className="h-3 w-3" />
+                                  {cfg.label}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         {/* Content */}
                         <div className="mt-2">
@@ -452,6 +633,7 @@ export default function CommunityPage() {
         </div>
     </div>
 
+      {/* Single-post confirm dialog */}
       <ConfirmDialog
         isOpen={!!confirmAction}
         title={confirmAction?.type === 'remove' ? 'Remove this post?' : 'Hide this post?'}
@@ -468,6 +650,34 @@ export default function CommunityPage() {
           setConfirmAction(null);
         }}
         onCancel={() => setConfirmAction(null)}
+      />
+
+      {/* Bulk confirm dialog */}
+      <ConfirmDialog
+        isOpen={!!bulkConfirm}
+        title={
+          bulkConfirm === 'remove'
+            ? `Remove ${selectedIds.size} post(s)?`
+            : bulkConfirm === 'hide'
+              ? `Hide ${selectedIds.size} post(s)?`
+              : `Restore ${selectedIds.size} post(s)?`
+        }
+        description={
+          bulkConfirm === 'remove'
+            ? `This will mark ${selectedIds.size} post(s) as removed. They will no longer be visible to associates.`
+            : bulkConfirm === 'hide'
+              ? `This will hide ${selectedIds.size} post(s) from all associates pending review.`
+              : `This will restore ${selectedIds.size} post(s) to active status.`
+        }
+        confirmLabel={
+          bulkConfirm === 'remove' ? 'Remove All' : bulkConfirm === 'hide' ? 'Hide All' : 'Restore All'
+        }
+        isDangerous={bulkConfirm !== 'restore'}
+        loading={bulkLoading}
+        onConfirm={() => {
+          if (bulkConfirm) executeBulkAction(bulkConfirm);
+        }}
+        onCancel={() => setBulkConfirm(null)}
       />
     </RoleGate>
   );
