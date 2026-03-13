@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Eye, Loader2, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -73,6 +73,7 @@ export function AddUserModal({
   const [sendInviteEmail, setSendInviteEmail] = useState(true);
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
 
   const requiresStore = role === 'associate' || role === 'store_manager';
 
@@ -91,6 +92,7 @@ export function AddUserModal({
     setSendInviteEmail(true);
     setTemporaryPassword(generateClientPassword());
     setIsSubmitting(false);
+    setShowEmailPreview(false);
   }, [open]);
 
   useEffect(() => {
@@ -258,6 +260,51 @@ export function AddUserModal({
                 onCheckedChange={setSendInviteEmail}
               />
             </div>
+
+            {sendInviteEmail && (
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowEmailPreview(!showEmailPreview)}
+                >
+                  {showEmailPreview ? <X className="h-3.5 w-3.5 mr-1.5" /> : <Eye className="h-3.5 w-3.5 mr-1.5" />}
+                  {showEmailPreview ? 'Hide Preview' : 'Preview Email'}
+                </Button>
+              </div>
+            )}
+
+            {sendInviteEmail && showEmailPreview && (
+              <div className="mt-3 rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                  Email Preview
+                </div>
+                <div
+                  className="pointer-events-none"
+                  dangerouslySetInnerHTML={{
+                    __html: `
+                      <div style="background:#1C1917;padding:32px 16px;font-family:Georgia,serif;text-align:center;">
+                        <img src="https://cdn.mcauto-images-production.sendgrid.net/d157e984273caff5/3acafde1-d902-4fab-9ed1-4e8afcbe35fd/225x225.png"
+                             width="60" style="margin-bottom:16px;" />
+                        <h1 style="color:#C9A227;font-size:22px;margin-bottom:6px;">Coach Pulse</h1>
+                        <p style="color:#F5F0EB;font-size:14px;margin-bottom:24px;">
+                          Hi ${fullName.trim() || 'there'},<br/>You've been invited to join the Coach Pulse platform.
+                        </p>
+                        <span style="display:inline-block;background:#C9A227;color:#1C1917;padding:12px 32px;
+                                     font-size:12px;font-weight:700;text-decoration:none;letter-spacing:1px;
+                                     text-transform:uppercase;">
+                          Set Your Password
+                        </span>
+                        <p style="color:#8B7355;font-size:11px;margin-top:24px;">
+                          This link expires in 24 hours.
+                        </p>
+                      </div>
+                    `,
+                  }}
+                />
+              </div>
+            )}
 
             {!sendInviteEmail && (
               <div className="mt-4 space-y-2">

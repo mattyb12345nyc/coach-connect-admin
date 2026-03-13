@@ -106,6 +106,14 @@ const EMPTY_CULTURAL_MOMENT: Omit<CulturalMoment, 'id'> = {
   store_region: null,
 };
 
+const SEED_CONTENT_TITLES = new Set([
+  'Master the Art of the Upsell',
+  'Gift Season',
+  'Heritage Week',
+  'Spring Collection Drop',
+  'Tabby Shoulder Bag Returns',
+]);
+
 const EMPTY_WHATS_NEW: Omit<WhatsNewItem, 'id'> = {
   tag: '',
   title: '',
@@ -597,6 +605,7 @@ function ItemRow({
   deleting,
   toggling,
   warning,
+  sampleContent,
 }: {
   label: string;
   sublabel?: string;
@@ -607,6 +616,7 @@ function ItemRow({
   deleting: boolean;
   toggling: boolean;
   warning?: string;
+  sampleContent?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -665,6 +675,14 @@ function ItemRow({
           <p className={cn('text-sm font-medium truncate', !active && 'text-gray-400')}>
             {label}
           </p>
+          {sampleContent && (
+            <span
+              title="Sample content — replace before launch"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-100 text-violet-700 border border-violet-200 shrink-0"
+            >
+              Sample
+            </span>
+          )}
           {warning && (
             <span
               title={warning}
@@ -923,6 +941,7 @@ export default function TodayDashboardPage() {
                         onDelete={() => setConfirmDelete({ table: 'focus_cards', id: card.id, label: card.title })}
                         deleting={deletingId === card.id}
                         toggling={togglingId === card.id}
+                        sampleContent={SEED_CONTENT_TITLES.has(card.title)}
                       />
                     )
                   )}
@@ -981,6 +1000,7 @@ export default function TodayDashboardPage() {
                         onDelete={() => setConfirmDelete({ table: 'cultural_moments', id: moment.id, label: moment.name })}
                         deleting={deletingId === moment.id}
                         toggling={togglingId === moment.id}
+                        sampleContent={SEED_CONTENT_TITLES.has(moment.name)}
                         warning={
                           moment.days_away === null || moment.days_away === undefined
                             ? 'Days Away is missing — edit this card to set a value'
@@ -1045,6 +1065,7 @@ export default function TodayDashboardPage() {
                         onDelete={() => setConfirmDelete({ table: 'whats_new', id: item.id, label: item.title })}
                         deleting={deletingId === item.id}
                         toggling={togglingId === item.id}
+                        sampleContent={SEED_CONTENT_TITLES.has(item.title)}
                       />
                     )
                   )}

@@ -14,12 +14,14 @@ import {
   Store,
   Trophy,
   UserCheck,
+  Upload,
   UserPlus,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { RoleGate } from '@/components/admin/RoleGate';
 import { AddUserModal } from '@/components/admin/users/AddUserModal';
+import { BulkImportModal } from '@/components/admin/users/BulkImportModal';
 import { CredentialsModal } from '@/components/admin/users/CredentialsModal';
 import { UserActionsMenu } from '@/components/admin/users/UserActionsMenu';
 import { Button } from '@/components/ui/button';
@@ -123,6 +125,7 @@ export default function UsersPage() {
   const [realAvgScore, setRealAvgScore] = useState<number | null | 'loading'>('loading');
   const [removingTestAccounts, setRemovingTestAccounts] = useState(false);
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [manualCredentials, setManualCredentials] = useState<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
@@ -269,6 +272,14 @@ export default function UsersPage() {
                 </Button>
               ) : null}
 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkImportOpen(true)}
+              >
+                <Upload className="mr-1.5 h-4 w-4" />
+                Bulk Import
+              </Button>
               <Button
                 size="sm"
                 onClick={() => setAddUserModalOpen(true)}
@@ -517,6 +528,13 @@ export default function UsersPage() {
         onOpenChange={setAddUserModalOpen}
         stores={storesList}
         onCreated={handleCreatedUser}
+      />
+
+      <BulkImportModal
+        open={bulkImportOpen}
+        onOpenChange={setBulkImportOpen}
+        stores={storesList}
+        onComplete={fetchUsers}
       />
 
       <CredentialsModal

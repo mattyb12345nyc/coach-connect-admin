@@ -46,7 +46,7 @@ const navSections: NavSection[] = [
       {
         id: 'chat-group', label: 'Coach Chat', icon: MessageSquare, href: '/admin/chat', minRole: 'admin',
         children: [
-          { id: 'chat-history', label: 'Chat History', icon: History, href: '/admin/chat-history', minRole: 'store_manager' },
+          { id: 'chat-history', label: 'History & Analytics', icon: History, href: '/admin/chat-history', minRole: 'store_manager' },
         ],
       },
       { id: 'practice', label: 'Practice Floor', icon: Mic, href: '/admin/practice', minRole: 'store_manager' },
