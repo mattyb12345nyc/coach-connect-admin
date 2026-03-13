@@ -235,7 +235,7 @@ export interface AgentSettings {
   /** Show typing/loading indicator while bot is responding */
   is_loading_indicator_enabled?: boolean;
   
-  /** Remove CustomGPT branding from the chat interface */
+  /** Remove third-party branding from the chat interface */
   remove_branding?: boolean;
   
   /** Whether this is a private/internal deployment */

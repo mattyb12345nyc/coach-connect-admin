@@ -43,7 +43,7 @@ export const SecurityAndPrivacy: React.FC<SecurityAndPrivacyProps> = ({ project 
     // API-documented security fields only
     private_deployment: false,
     enable_recaptcha_for_public_chatbots: false,
-    remove_branding: false,
+    remove_branding: true,
     conversation_time_window: false,
     conversation_retention_period: 'year',
     conversation_retention_days: 180,
@@ -68,7 +68,7 @@ export const SecurityAndPrivacy: React.FC<SecurityAndPrivacyProps> = ({ project 
         // API-documented fields with exact defaults from API docs
         private_deployment: settings.private_deployment || false,
         enable_recaptcha_for_public_chatbots: settings.enable_recaptcha_for_public_chatbots || false,
-        remove_branding: settings.remove_branding || false,
+        remove_branding: settings.remove_branding ?? true,
         conversation_time_window: settings.conversation_time_window || false,
         conversation_retention_period: settings.conversation_retention_period || 'year',
         conversation_retention_days: settings.conversation_retention_days || 180,
@@ -256,7 +256,7 @@ export const SecurityAndPrivacy: React.FC<SecurityAndPrivacyProps> = ({ project 
                     <span className="text-sm font-medium text-foreground">Remove Branding</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Hide &ldquo;Powered by CustomGPT&rdquo; branding from your chatbot
+                    Hide third-party branding from your chatbot
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">

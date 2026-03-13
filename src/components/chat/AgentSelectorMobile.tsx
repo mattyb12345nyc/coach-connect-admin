@@ -507,7 +507,7 @@ export const AgentSelectorMobile: React.FC<AgentSelectorMobileProps> = ({
               <p className="text-muted-foreground mb-6 max-w-sm">
                 {searchQuery 
                   ? 'Try adjusting your search terms.' 
-                  : 'Create your first agent to get started with CustomGPT.'
+                  : 'Create your first agent to get started.'
                 }
               </p>
               {!searchQuery && (

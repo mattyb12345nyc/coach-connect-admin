@@ -65,3 +65,4 @@ dist/**/*.chunk.js
 dist/**/*.chunk.js.map
 # Local Netlify folder
 .netlify
+.firecrawl/

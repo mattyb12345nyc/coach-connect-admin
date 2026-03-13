@@ -77,12 +77,12 @@ export function SecurityPrivacySettings({ settings, onChange }: SecurityPrivacyS
             <div className="space-y-0.5 flex-1">
               <Label htmlFor="remove_branding">Remove Branding</Label>
               <p className="text-sm text-muted-foreground">
-                Hide CustomGPT branding from the chat interface
+                Hide third-party branding from the chat interface
               </p>
             </div>
             <Switch
               id="remove_branding"
-              checked={settings.remove_branding || false}
+              checked={settings.remove_branding ?? true}
               onCheckedChange={(checked) => onChange('remove_branding', checked)}
             />
           </div>

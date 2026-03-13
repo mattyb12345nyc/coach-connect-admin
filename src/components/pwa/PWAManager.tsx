@@ -61,7 +61,7 @@ export const PWAManager: React.FC = () => {
       setIsInstalled(true);
       setIsInstallable(false);
       setDeferredPrompt(null);
-      toast.success('CustomGPT has been installed!');
+      toast.success('Coach Pulse has been installed!');
     };
 
     window.addEventListener('appinstalled', handleAppInstalled);
@@ -148,7 +148,7 @@ export const PWAManager: React.FC = () => {
             <div className="flex items-center gap-3">
               <RefreshCw className="w-5 h-5" />
               <p className="text-sm font-medium">
-                A new version of CustomGPT is available
+                A new version of Coach Pulse is available
               </p>
             </div>
             <div className="flex items-center gap-2">

@@ -2,7 +2,7 @@
  * ChatContainer Component
  * 
  * Main chat interface component that manages the entire chat experience.
- * This is the primary component for integrating CustomGPT chat functionality.
+ * This is the primary component for the chat functionality.
  * 
  * Features:
  * - Message display with streaming support
@@ -53,10 +53,10 @@ import { FreeTrialLimitModal } from '@/components/demo/FreeTrialLimitModal';
  * These are used as fallback when API-sourced example questions are not available
  */
 const DEFAULT_EXAMPLE_PROMPTS = [
-  "What can you help me with?",
-  "Explain this document", 
-  "Summarize key points",
-  "Answer my questions",
+  "What's trending in Coach this season?",
+  "Help me style the Tabby bag",
+  "What are today's best sellers?",
+  "How do I describe our leather types?",
 ];
 
 interface ExamplePromptCardProps {
@@ -974,20 +974,15 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
       
       {/* Branding Footer */}
       <div className={cn(
-        "px-4 py-2 border-t border-border bg-muted",
+        "px-4 py-1.5 border-t border-border bg-muted",
         mode === 'standalone' && "flex items-center justify-center"
       )}>
-        <a
-          href="https://customgpt.ai"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "text-xs text-muted-foreground hover:text-foreground transition-colors",
-            mode === 'standalone' ? "inline-flex items-center" : "block text-center"
-          )}
-        >
-          Powered by Coach Pulse
-        </a>
+        <span className={cn(
+          "text-[10px] text-muted-foreground",
+          mode === 'standalone' ? "inline-flex items-center" : "block text-center"
+        )}>
+          Coach Pulse
+        </span>
       </div>
       
       {/* Voice Modal */}
