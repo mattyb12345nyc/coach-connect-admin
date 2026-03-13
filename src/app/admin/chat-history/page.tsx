@@ -145,9 +145,9 @@ export default function ChatAnalyticsPage() {
                 <MessageSquare className="w-5 h-5 text-coach-gold" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Coach Chat Analytics</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Chat History & Analytics</h1>
                 <p className="text-sm text-gray-500">
-                  Data sourced from CustomGPT.ai analytics
+                  Conversation history and usage insights
                 </p>
               </div>
             </div>
